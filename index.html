@@ -1,3 +1,6 @@
+# Complete Body Recomp Tracker App (Copy Into index.html)
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,1098 +9,570 @@
     <title>Body Recomp Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-        .tab-active { background-color: #e0e7ff; color: #4f46e5; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .tab-active {
+            background-color: #e0e7ff;
+            color: #4f46e5;
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-    <div id="app" class="max-w-2xl mx-auto p-4 pb-24"></div>
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
 
-    <script>
-        // Simple state management
-        let state = {
-            tab: 'dashboard',
-            lastPeriod: localStorage.getItem('lastPeriod') || '',
-            weight: localStorage.getItem('weight') || '65',
-            selectedWorkout: null,
-            workoutLog: JSON.parse(localStorage.getItem('workoutLog') || '{}'),
-            prs: JSON.parse(localStorage.getItem('prs') || '{}'),
-            timer: 0,
-            timerRunning: false,
-            note: '',
-            editingPR: null,
-            prValue: '',
-            proteinToday: JSON.parse(localStorage.getItem('proteinToday') || '{"date":"","amount":0}'),
-            showProteinInput: false,
-            proteinAmount: '',
-            customSchedule: JSON.parse(localStorage.getItem('customSchedule') || 'null'),
-            editingSchedule: false,
-            cardioLog: JSON.parse(localStorage.getItem('cardioLog') || '{}'),
-            cardioTimer: 0,
-            cardioRunning: false,
-            customExercises: [],
-            showAddExercise: false,
-            newExerciseName: '',
-            newExerciseSets: '3',
-            newExerciseReps: '10-12'
-        };
+<div id="app" class="max-w-2xl mx-auto p-4 pb-24"></div>
 
-        const workouts = {
-            'Upper A': [
-                { name: 'Barbell Bench Press', sets: 4, reps: '6-8', rest: 120 },
-                { name: 'Overhead Press', sets: 3, reps: '8-10', rest: 90 },
-                { name: 'Incline DB Press', sets: 3, reps: '10-12', rest: 60 },
-                { name: 'Tricep Pushdowns', sets: 3, reps: '12-15', rest: 60 },
-                { name: 'Lateral Raises', sets: 4, reps: '15-20', rest: 45 },
-                { name: 'Face Pulls', sets: 3, reps: '15-20', rest: 45 }
-            ],
-            'Lower A': [
-                { name: 'Back Squat', sets: 4, reps: '6-8', rest: 180 },
-                { name: 'Romanian Deadlift', sets: 3, reps: '8-10', rest: 120 },
-                { name: 'Bulgarian Split Squats', sets: 3, reps: '10-12', rest: 90 },
-                { name: 'Leg Press', sets: 3, reps: '12-15', rest: 60 },
-                { name: 'Glute Bridges', sets: 4, reps: '12-15', rest: 60 },
-                { name: 'Calf Raises', sets: 3, reps: '15-20', rest: 45 }
-            ],
-            'Upper B': [
-                { name: 'Barbell Row', sets: 4, reps: '6-8', rest: 120 },
-                { name: 'Pull-Ups', sets: 4, reps: '8-10', rest: 90 },
-                { name: 'Chest Row', sets: 3, reps: '10-12', rest: 60 },
-                { name: 'DB Curl', sets: 3, reps: '8-10', rest: 60 },
-                { name: 'Hammer Curls', sets: 3, reps: '10-12', rest: 60 },
-                { name: 'Rear Delt Flyes', sets: 3, reps: '15-20', rest: 45 }
-            ],
-            'Lower B': [
-                { name: 'Deadlift', sets: 4, reps: '5-6', rest: 180 },
-                { name: 'Goblet Squat', sets: 3, reps: '8-10', rest: 120 },
-                { name: 'Walking Lunges', sets: 3, reps: '12/leg', rest: 90 },
-                { name: 'Leg Extensions', sets: 3, reps: '12-15', rest: 60 },
-                { name: 'Hip Thrusts', sets: 4, reps: '10-12', rest: 60 },
-                { name: 'Calf Raises', sets: 3, reps: '12-15', rest: 45 }
-            ]
-        };
+<script>
 
-        const schedule = [
-            { day: 'Monday', workout: 'Upper A' },
-            { day: 'Tuesday', workout: 'Lower A' },
-            { day: 'Wednesday', workout: 'Rest' },
-            { day: 'Thursday', workout: 'Upper B' },
-            { day: 'Friday', workout: 'Lower B' },
-            { day: 'Saturday', workout: 'Rest' },
-            { day: 'Sunday', workout: 'Rest' }
-        ];
+let state = {
+    tab: 'dashboard',
+    currentUser: localStorage.getItem('currentUser') || '',
+    users: JSON.parse(localStorage.getItem('users') || '{}'),
+    showAuth: !localStorage.getItem('currentUser'),
+    loginMode: 'login',
+    username: '',
+    password: '',
 
-        function getCycleInfo(lastPeriodDate) {
-            if (!lastPeriodDate) return null;
-            const today = new Date();
-            const lastPeriod = new Date(lastPeriodDate);
-            const daysDiff = Math.floor((today - lastPeriod) / (1000 * 60 * 60 * 24));
-            const cycleDay = (daysDiff % 28) + 1;
-            
-            let phase, calories, trainingIntensity;
-            
-            if (cycleDay <= 5) {
-                phase = 'Menstrual';
-                calories = '2,150-2,200 kcal';
-                trainingIntensity = '70-85% intensity';
-            } else if (cycleDay <= 14) {
-                phase = 'Follicular';
-                calories = '2,100-2,150 kcal';
-                trainingIntensity = '80-90% - PUSH FOR PRS!';
-            } else if (cycleDay <= 17) {
-                phase = 'Ovulation';
-                calories = '2,150-2,200 kcal';
-                trainingIntensity = '85-95% - GO FOR PRS!';
-            } else {
-                phase = 'Luteal';
-                calories = '2,200-2,300 kcal';
-                trainingIntensity = cycleDay <= 24 ? '80-90%' : '75-85%';
-            }
-            
-            return { cycleDay, phase, calories, trainingIntensity };
+    lastPeriod: '',
+    weight: '65',
+    selectedWorkout: null,
+    workoutLog: {},
+    prs: {},
+    proteinToday: { date:'', amount:0 },
+    cardioLog: {},
+    timer: 0,
+    timerRunning: false,
+    cardioTimer: 0,
+    cardioRunning: false
+};
+
+const workouts = {
+    'Upper A': [
+        { name: 'Bench Press', sets: 4, reps: '6-8', rest: 120 },
+        { name: 'Overhead Press', sets: 3, reps: '8-10', rest: 90 },
+        { name: 'Incline DB Press', sets: 3, reps: '10-12', rest: 60 }
+    ],
+    'Lower A': [
+        { name: 'Back Squat', sets: 4, reps: '6-8', rest: 180 },
+        { name: 'Romanian Deadlift', sets: 3, reps: '8-10', rest: 120 },
+        { name: 'Leg Press', sets: 3, reps: '12-15', rest: 60 }
+    ],
+    'Upper B': [
+        { name: 'Barbell Row', sets: 4, reps: '6-8', rest: 120 },
+        { name: 'Pull-Ups', sets: 4, reps: '8-10', rest: 90 },
+        { name: 'DB Curl', sets: 3, reps: '10-12', rest: 60 }
+    ],
+    'Lower B': [
+        { name: 'Deadlift', sets: 4, reps: '5-6', rest: 180 },
+        { name: 'Walking Lunges', sets: 3, reps: '12/leg', rest: 90 },
+        { name: 'Hip Thrusts', sets: 4, reps: '10-12', rest: 60 }
+    ]
+};
+
+const schedule = [
+    { day: 'Monday', workout: 'Upper A' },
+    { day: 'Tuesday', workout: 'Lower A' },
+    { day: 'Wednesday', workout: 'Rest' },
+    { day: 'Thursday', workout: 'Upper B' },
+    { day: 'Friday', workout: 'Lower B' },
+    { day: 'Saturday', workout: 'Rest' },
+    { day: 'Sunday', workout: 'Rest' }
+];
+
+function getUserKey(key) {
+    return `${state.currentUser}_${key}`;
+}
+
+function save() {
+    if (!state.currentUser) return;
+
+    localStorage.setItem(getUserKey('lastPeriod'), state.lastPeriod);
+    localStorage.setItem(getUserKey('weight'), state.weight);
+    localStorage.setItem(getUserKey('workoutLog'), JSON.stringify(state.workoutLog));
+    localStorage.setItem(getUserKey('prs'), JSON.stringify(state.prs));
+    localStorage.setItem(getUserKey('proteinToday'), JSON.stringify(state.proteinToday));
+    localStorage.setItem(getUserKey('cardioLog'), JSON.stringify(state.cardioLog));
+}
+
+function loadUserData() {
+    if (!state.currentUser) return;
+
+    state.lastPeriod = localStorage.getItem(getUserKey('lastPeriod')) || '';
+    state.weight = localStorage.getItem(getUserKey('weight')) || '65';
+    state.workoutLog = JSON.parse(localStorage.getItem(getUserKey('workoutLog')) || '{}');
+    state.prs = JSON.parse(localStorage.getItem(getUserKey('prs')) || '{}');
+    state.proteinToday = JSON.parse(localStorage.getItem(getUserKey('proteinToday')) || '{"date":"","amount":0}');
+    state.cardioLog = JSON.parse(localStorage.getItem(getUserKey('cardioLog')) || '{}');
+}
+
+function getCycleInfo(lastPeriodDate) {
+    if (!lastPeriodDate) return null;
+
+    const today = new Date();
+    const lastPeriod = new Date(lastPeriodDate);
+    const daysDiff = Math.floor((today - lastPeriod) / (1000 * 60 * 60 * 24));
+    const cycleDay = (daysDiff % 28) + 1;
+
+    let phase = 'Luteal';
+
+    if (cycleDay <= 5) phase = 'Menstrual';
+    else if (cycleDay <= 14) phase = 'Follicular';
+    else if (cycleDay <= 17) phase = 'Ovulation';
+
+    return {
+        cycleDay,
+        phase
+    };
+}
+
+function handleAuth() {
+    const username = state.username.trim();
+    const password = state.password.trim();
+
+    if (!username || !password) {
+        alert('Fill in all fields');
+        return;
+    }
+
+    if (state.loginMode === 'signup') {
+        if (state.users[username]) {
+            alert('Username already exists');
+            return;
         }
 
-        function save() {
-            localStorage.setItem('lastPeriod', state.lastPeriod);
-            localStorage.setItem('weight', state.weight);
-            localStorage.setItem('workoutLog', JSON.stringify(state.workoutLog));
-            localStorage.setItem('prs', JSON.stringify(state.prs));
-            localStorage.setItem('proteinToday', JSON.stringify(state.proteinToday));
-            localStorage.setItem('customSchedule', JSON.stringify(state.customSchedule));
-            localStorage.setItem('cardioLog', JSON.stringify(state.cardioLog));
-        }
+        state.users[username] = { password };
+        localStorage.setItem('users', JSON.stringify(state.users));
 
-        function addProtein() {
-            const today = new Date().toISOString().split('T')[0];
-            if (state.proteinToday.date !== today) {
-                state.proteinToday = { date: today, amount: 0 };
-            }
-            const amount = parseFloat(state.proteinAmount) || 0;
-            state.proteinToday.amount += amount;
-            state.proteinAmount = '';
-            state.showProteinInput = false;
-            save();
-            render();
-        }
+        alert('Account created!');
 
-        function resetProtein() {
-            const today = new Date().toISOString().split('T')[0];
-            state.proteinToday = { date: today, amount: 0 };
-            save();
-            render();
-        }
-
-        function syncAppleHealth() {
-            // Check if running as PWA on iOS
-            if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
-                alert('Apple Health sync coming soon! For now:\n\n1. Export your data using the Export button\n2. Open Apple Health app\n3. Manually log:\n   - Weight: ' + state.weight + 'kg\n   - Workouts logged: ' + Object.keys(state.workoutLog).length + '\n\nFull auto-sync requires native app.');
-            } else {
-                alert('Apple Health Integration:\n\nTo enable health sync:\n1. Add this app to your Home Screen first\n2. Open from Home Screen (not Safari)\n3. Grant health permissions\n\nNote: Full Apple Health sync requires native app development. For now, use Export Data to manually import to health apps.');
-            }
-        }
-
-        function getCardioRecommendation(cycleInfo) {
-            if (!cycleInfo) return { recommended: false, reason: 'Set your cycle date first' };
-            
-            const cycleDay = cycleInfo.cycleDay;
-            
-            if (cycleDay >= 1 && cycleDay <= 2) {
-                return { recommended: false, reason: 'Menstrual Days 1-2: Rest if feeling low energy', color: 'red' };
-            } else if (cycleDay >= 3 && cycleDay <= 5) {
-                return { recommended: true, reason: 'Menstrual Days 3-5: Light cardio OK if energy rebounds', sessions: '0-1x this week', color: 'yellow' };
-            } else if (cycleDay >= 6 && cycleDay <= 14) {
-                return { recommended: true, reason: 'Follicular: PEAK cardio phase! Go for it!', sessions: '2-3x this week', color: 'green' };
-            } else if (cycleDay >= 15 && cycleDay <= 17) {
-                return { recommended: true, reason: 'Ovulation: Energy is high, but save some for lifting PRs', sessions: '1-2x this week', color: 'green' };
-            } else if (cycleDay >= 18 && cycleDay <= 24) {
-                return { recommended: true, reason: 'Early Luteal: Still good to go', sessions: '1-2x this week', color: 'green' };
-            } else {
-                return { recommended: false, reason: 'Late Luteal (PMS): Skip cardio, just walk 8-10k steps', color: 'red' };
-            }
-        }
-
-        function getCardioThisWeek() {
-            const today = new Date();
-            const weekStart = new Date(today);
-            weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
-            
-            let count = 0;
-            Object.entries(state.cardioLog).forEach(([date, log]) => {
-                const logDate = new Date(date);
-                if (logDate >= weekStart && logDate <= today) {
-                    count++;
-                }
-            });
-            return count;
-        }
-
-        function startCardioTimer() {
-            state.cardioTimer = 1800; // 30 minutes
-            state.cardioRunning = true;
-            render();
-            
-            const interval = setInterval(() => {
-                state.cardioTimer--;
-                if (state.cardioTimer <= 0) {
-                    clearInterval(interval);
-                    state.cardioRunning = false;
-                    alert('🎉 30 minutes done! Great job!');
-                    render();
-                }
-                if (state.cardioTimer % 60 === 0) { // Update every minute
-                    render();
-                }
-            }, 1000);
-        }
-
-        function stopCardioTimer() {
-            state.cardioTimer = 0;
-            state.cardioRunning = false;
-            render();
-        }
-
-        function logCardio() {
-            const date = new Date().toISOString().split('T')[0];
-            const cycleInfo = getCycleInfo(state.lastPeriod);
-            state.cardioLog[date] = {
-                type: '12-3-30',
-                duration: 30,
-                phase: cycleInfo?.phase || 'Unknown'
-            };
-            state.cardioTimer = 0;
-            state.cardioRunning = false;
-            save();
-            render();
-        }
-
-        function startTimer(seconds) {
-            state.timer = seconds;
-            state.timerRunning = true;
-            render();
-            
-            const interval = setInterval(() => {
-                state.timer--;
-                if (state.timer <= 0) {
-                    clearInterval(interval);
-                    state.timerRunning = false;
-                }
-                render();
-            }, 1000);
-        }
-
-        function savePR(exercise) {
-            if (state.prValue.trim()) {
-                const cycleInfo = getCycleInfo(state.lastPeriod);
-                state.prs[exercise] = {
-                    value: state.prValue,
-                    date: new Date().toISOString().split('T')[0],
-                    phase: cycleInfo?.phase || 'Unknown'
-                };
-                state.editingPR = null;
-                state.prValue = '';
-                save();
-                render();
-            }
-        }
-
-        function completeWorkout() {
-            const date = new Date().toISOString().split('T')[0];
-            const cycleInfo = getCycleInfo(state.lastPeriod);
-            state.workoutLog[date] = {
-                workout: state.selectedWorkout,
-                phase: cycleInfo?.phase || 'Unknown',
-                note: state.note
-            };
-            state.selectedWorkout = null;
-            state.note = '';
-            state.timer = 0;
-            state.timerRunning = false;
-            save();
-            render();
-        }
-
-        function render() {
-            const app = document.getElementById('app');
-            const cycleInfo = getCycleInfo(state.lastPeriod);
-            const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-            const activeSchedule = state.customSchedule || schedule;
-            const todayWorkout = activeSchedule.find(d => d.day === today);
-
-            let html = `
-                <div class="text-center mb-6 pt-4">
-                    <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-                        Body Recomp Tracker
-                    </h1>
-                    <p class="text-sm text-gray-600">Cycle-Synced Training</p>
-                </div>
-            `;
-
-            // DASHBOARD
-            if (state.tab === 'dashboard') {
-                html += '<div class="space-y-6">';
-                
-                if (cycleInfo) {
-                    html += `
-                        <div class="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-6 border-2 border-pink-200">
-                            <h2 class="text-2xl font-bold text-purple-900 mb-4">Cycle Day ${cycleInfo.cycleDay}</h2>
-                            <div class="space-y-3">
-                                <p class="text-lg font-semibold text-purple-800">${cycleInfo.phase} Phase</p>
-                                <div class="pt-3 border-t border-purple-200">
-                                    <p class="text-sm font-semibold text-gray-800 mb-1">Training:</p>
-                                    <p class="text-sm text-gray-700">${cycleInfo.trainingIntensity}</p>
-                                </div>
-                                <div class="pt-2">
-                                    <p class="text-sm font-semibold text-gray-800 mb-1">Calories:</p>
-                                    <p class="text-sm text-gray-700">${cycleInfo.calories}</p>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    html += `
-                        <div class="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
-                            <p class="text-gray-700 mb-3">Set your last period date</p>
-                            
-                            <input type="date" id="lastPeriodInput" value="${state.lastPeriod}" 
-                                class="px-4 py-2 border-2 border-yellow-300 rounded-lg w-full">
-
-                            <button onclick="resetCycle()" 
-                                class="mt-3 w-full bg-red-100 text-red-700 py-2 rounded-lg font-semibold border border-red-300 hover:bg-red-200">
-                                🩸 Reset Menstrual Cycle
-                            </button>
-                        </div>
-                    `;
-                }
-
-                if (todayWorkout) {
-                    html += `
-                        <div class="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-sm">
-                            <h2 class="text-xl font-bold mb-4">Today's Training</h2>
-                            ${todayWorkout.workout === 'Rest' 
-                                ? '<p class="text-center py-4 text-gray-600">Rest & Recovery Day</p>'
-                                : `
-                                    <p class="text-lg font-semibold text-blue-600 mb-3">${todayWorkout.workout}</p>
-                                    <button onclick="selectWorkout('${todayWorkout.workout}')" 
-                                        class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold">
-                                        Start Workout
-                                    </button>
-                                `
-                            }
-                        </div>
-                    `;
-                }
-
-                html += `
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-white rounded-xl p-4 border-2 border-gray-200">
-                            <p class="text-sm text-gray-600 mb-1">Weight</p>
-                            <input type="number" id="weightInput" value="${state.weight}" step="0.1"
-                                class="w-20 px-2 py-1 border-2 rounded"> kg
-                        </div>
-                        <div class="bg-white rounded-xl p-4 border-2 border-gray-200">
-                            <p class="text-sm text-gray-600 mb-1">Protein</p>
-                            <p class="text-2xl font-bold text-blue-600">130-145g</p>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-xl p-6 border-2 border-green-200 shadow-sm">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <p class="text-sm text-gray-600">Protein Today</p>
-                                <p class="text-3xl font-bold text-green-600">${getTodayProtein()}g</p>
-                                <p class="text-xs text-gray-500">Target: 130-145g</p>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-sm text-gray-600 mb-2">
-                                    ${Math.round((getTodayProtein() / 135) * 100)}%
-                                </div>
-                                <button onclick="toggleProteinInput()" 
-                                    class="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold text-sm">
-                                    + Add
-                                </button>
-                            </div>
-                        </div>
-                        
-                        ${state.showProteinInput ? `
-                            <div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                                <p class="text-sm font-semibold text-green-800 mb-2">Quick Add Protein:</p>
-                                <div class="grid grid-cols-3 gap-2 mb-3">
-                                    <button onclick="quickAddProtein(25)" class="px-3 py-2 bg-white border-2 border-green-300 rounded-lg text-sm font-semibold hover:bg-green-100">
-                                        +25g<br><span class="text-xs text-gray-500">Scoop</span>
-                                    </button>
-                                    <button onclick="quickAddProtein(30)" class="px-3 py-2 bg-white border-2 border-green-300 rounded-lg text-sm font-semibold hover:bg-green-100">
-                                        +30g<br><span class="text-xs text-gray-500">Chicken</span>
-                                    </button>
-                                    <button onclick="quickAddProtein(20)" class="px-3 py-2 bg-white border-2 border-green-300 rounded-lg text-sm font-semibold hover:bg-green-100">
-                                        +20g<br><span class="text-xs text-gray-500">Eggs</span>
-                                    </button>
-                                </div>
-                                <div class="flex gap-2">
-                                    <input type="number" id="proteinInput" value="${state.proteinAmount}" 
-                                        placeholder="Custom amount" 
-                                        class="flex-1 px-3 py-2 border-2 border-green-300 rounded-lg text-sm">
-                                    <button onclick="addProtein()" 
-                                        class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold">
-                                        Add
-                                    </button>
-                                    <button onclick="toggleProteinInput()" 
-                                        class="px-3 py-2 bg-gray-200 rounded-lg text-sm">
-                                        ✕
-                                    </button>
-                                </div>
-                                <button onclick="resetProtein()" 
-                                    class="w-full mt-2 px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-semibold">
-                                    Reset Today
-                                </button>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="w-full bg-gray-200 rounded-full h-2 mt-3">
-                            <div class="bg-green-600 h-2 rounded-full transition-all" 
-                                style="width: ${Math.min((getTodayProtein() / 145) * 100, 100)}%"></div>
-                        </div>
-                    </div>
-
-                    <button onclick="syncAppleHealth()" 
-                        class="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg">
-                        <span class="text-xl">❤️</span>
-                        Sync with Apple Health
-                    </button>
-                `;
-
-                if (cycleInfo) {
-                    html += `
-                        <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 border-2 border-green-200">
-                            <h3 class="font-semibold mb-2">💡 Nutrition (${cycleInfo.phase})</h3>
-                            <p class="text-sm text-gray-700 mb-2">${cycleInfo.calories}</p>
-                            <div class="text-sm space-y-1">
-                                <p>• Protein: 130-145g (priority!)</p>
-                                <p>• Carbs: 200-240g</p>
-                                <p>• Fats: ${cycleInfo.phase === 'Luteal' ? '70-80g' : '55-65g'}</p>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                html += '</div>';
-            }
-
-            // WORKOUT
-            else if (state.tab === 'workout') {
-                if (state.selectedWorkout) {
-                    html += '<div class="space-y-4">';
-                    html += '<button onclick="backToSchedule()" class="text-blue-600 font-semibold">← Back to Schedule</button>';
-                    
-                    if (state.timerRunning) {
-                        const mins = Math.floor(state.timer / 60);
-                        const secs = state.timer % 60;
-                        html += `
-                            <div class="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl p-4">
-                                <div class="flex justify-between items-center">
-                                    <span>Rest Timer</span>
-                                    <div class="flex items-center gap-4">
-                                        <span class="text-3xl font-bold">${mins}:${secs.toString().padStart(2, '0')}</span>
-                                        <button onclick="stopTimer()" class="px-3 py-1 bg-white/20 rounded-lg">Stop</button>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }
-
-                    html += `
-                        <div class="bg-white rounded-xl p-6 border-2 border-blue-200">
-                            <h2 class="text-2xl font-bold mb-4">${state.selectedWorkout}</h2>
-                            
-                            <div class="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                                <p class="text-sm font-semibold text-yellow-800 mb-2">Workout Notes</p>
-                                <textarea id="noteInput" rows="3" 
-                                    class="w-full px-3 py-2 border-2 border-yellow-300 rounded-lg text-sm"
-                                    placeholder="How did you feel?">${state.note}</textarea>
-                            </div>
-
-                            <div class="space-y-3">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h3 class="font-bold text-gray-900">Exercises</h3>
-                                    <button onclick="toggleAddExercise()" 
-                                        class="px-3 py-1 ${state.showAddExercise ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-700'} rounded-lg text-sm font-semibold">
-                                        ${state.showAddExercise ? '✕ Cancel' : '+ Add Exercise'}
-                                    </button>
-                                </div>
-
-                                ${state.showAddExercise ? `
-                                    <div class="p-4 bg-green-50 rounded-lg border-2 border-green-200 mb-3">
-                                        <p class="text-sm font-semibold text-green-800 mb-3">Add Custom Exercise:</p>
-                                        <input type="text" id="newExerciseName" value="${state.newExerciseName}" 
-                                            placeholder="Exercise name (e.g., Cable Flyes)" 
-                                            class="w-full px-3 py-2 border-2 border-green-300 rounded-lg text-sm mb-2">
-                                        <div class="grid grid-cols-2 gap-2 mb-2">
-                                            <input type="text" id="newExerciseSets" value="${state.newExerciseSets}" 
-                                                placeholder="Sets" 
-                                                class="px-3 py-2 border-2 border-green-300 rounded-lg text-sm">
-                                            <input type="text" id="newExerciseReps" value="${state.newExerciseReps}" 
-                                                placeholder="Reps" 
-                                                class="px-3 py-2 border-2 border-green-300 rounded-lg text-sm">
-                                        </div>
-                                        <button onclick="addCustomExercise()" 
-                                            class="w-full bg-green-600 text-white py-2 rounded-lg font-semibold text-sm">
-                                            Add to Today's Workout
-                                        </button>
-                                    </div>
-                                ` : ''}
-                    `;
-
-                    // Show main workout exercises
-                    workouts[state.selectedWorkout].forEach((ex, i) => {
-                        html += `
-                            <div class="p-4 bg-gray-50 rounded-lg border">
-                                <div class="flex justify-between mb-2">
-                                    <div class="flex-1">
-                                        <p class="font-semibold">${ex.name}</p>
-                                        <p class="text-sm text-gray-600">${ex.sets} sets × ${ex.reps} | Rest: ${ex.rest}s</p>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <button onclick="startTimer(${ex.rest})" 
-                                            class="px-3 py-1 bg-orange-100 text-orange-600 rounded-lg text-sm">
-                                            ⏱️
-                                        </button>
-                                        <button onclick="editPR('${ex.name}')" 
-                                            class="px-3 py-1 bg-yellow-100 text-yellow-600 rounded-lg text-sm">
-                                            🏆
-                                        </button>
-                                    </div>
-                                </div>
-                        `;
-
-                        if (state.editingPR === ex.name) {
-                            html += `
-                                <div class="flex gap-2 mt-2">
-                                    <input type="text" id="prInput" value="${state.prValue}" 
-                                        placeholder="e.g., 60kg × 8" 
-                                        class="flex-1 px-3 py-2 border-2 border-yellow-300 rounded-lg text-sm">
-                                    <button onclick="savePR('${ex.name}')" 
-                                        class="px-3 py-2 bg-green-500 text-white rounded-lg text-sm">Save</button>
-                                    <button onclick="cancelPR()" 
-                                        class="px-3 py-2 bg-gray-300 rounded-lg text-sm">✕</button>
-                                </div>
-                            `;
-                        } else if (state.prs[ex.name]) {
-                            const pr = state.prs[ex.name];
-                            html += `
-                                <div class="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
-                                    <p class="text-xs text-yellow-700 font-semibold">PR</p>
-                                    <p class="text-sm font-bold text-yellow-900">${pr.value}</p>
-                                    <p class="text-xs text-gray-500">${new Date(pr.date).toLocaleDateString()} • ${pr.phase}</p>
-                                </div>
-                            `;
-                        }
-
-                        html += '</div>';
-                    });
-
-                    html += `
-                            </div>
-                            
-                            ${state.customExercises.length > 0 ? `
-                                <div class="mt-4 pt-4 border-t-2 border-dashed border-gray-300">
-                                    <p class="text-sm font-semibold text-gray-700 mb-3">💪 Extra Exercises Added:</p>
-                                    ${state.customExercises.map((ex, idx) => `
-                                        <div class="p-3 bg-purple-50 rounded-lg border border-purple-200 mb-2">
-                                            <div class="flex justify-between items-center">
-                                                <div>
-                                                    <p class="font-semibold text-sm">${ex.name}</p>
-                                                    <p class="text-xs text-gray-600">${ex.sets} sets × ${ex.reps} reps</p>
-                                                </div>
-                                                <button onclick="removeCustomExercise(${idx})" 
-                                                    class="px-2 py-1 bg-red-100 text-red-600 rounded text-xs">
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                            
-                            <button onclick="completeWorkout()" 
-                                class="w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-semibold">
-                                ✓ Complete Workout
-                            </button>
-                        </div>
-                    </div>
-                    `;
-                } else {
-                    html += '<div><h2 class="text-2xl font-bold mb-4">Weekly Schedule</h2>';
-                    
-                    html += `
-                        <div class="mb-4 flex justify-end">
-                            <button onclick="toggleScheduleEdit()" 
-                                class="px-4 py-2 ${state.editingSchedule ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'} rounded-lg text-sm font-semibold flex items-center gap-2">
-                                <span class="text-lg">⚙️</span>
-                                ${state.editingSchedule ? 'Done' : 'Customize Schedule'}
-                            </button>
-                        </div>
-                    `;
-
-                    if (state.editingSchedule) {
-                        html += `
-                            <div class="mb-4 p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
-                                <p class="text-sm text-purple-800 mb-3 font-semibold">
-                                    Tap to change workout days:
-                                </p>
-                        `;
-                        
-                        const currentSchedule = state.customSchedule || schedule;
-                        currentSchedule.forEach((day, i) => {
-                            html += `
-                                <div class="mb-2 flex items-center gap-2">
-                                    <span class="text-sm font-semibold w-24">${day.day}:</span>
-                                    <select id="schedule-${i}" class="flex-1 px-3 py-2 border-2 border-purple-300 rounded-lg text-sm bg-white">
-                                        <option value="Rest" ${day.workout === 'Rest' ? 'selected' : ''}>Rest</option>
-                                        <option value="Upper A" ${day.workout === 'Upper A' ? 'selected' : ''}>Upper A (Push)</option>
-                                        <option value="Lower A" ${day.workout === 'Lower A' ? 'selected' : ''}>Lower A (Quad/Glute)</option>
-                                        <option value="Upper B" ${day.workout === 'Upper B' ? 'selected' : ''}>Upper B (Pull)</option>
-                                        <option value="Lower B" ${day.workout === 'Lower B' ? 'selected' : ''}>Lower B (Posterior)</option>
-                                    </select>
-                                </div>
-                            `;
-                        });
-
-                        html += `
-                                <button onclick="resetSchedule()" 
-                                    class="w-full mt-3 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300">
-                                    Reset to Default Schedule
-                                </button>
-                            </div>
-                        `;
-                    }
-
-                    html += '<div class="space-y-3">';
-                    
-                    activeSchedule.forEach((day, i) => {
-                        const isToday = day.day === today;
-                        html += `
-                            <div class="p-4 rounded-xl border-2 ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200'}">
-                                <div class="flex justify-between items-center">
-                                    <div>
-                                        <p class="font-bold">${day.day}</p>
-                                        <p class="text-sm ${day.workout === 'Rest' ? 'text-gray-500' : 'text-blue-600 font-semibold'}">
-                                            ${day.workout}
-                                        </p>
-                                    </div>
-                                    ${day.workout !== 'Rest' ? `
-                                        <button onclick="selectWorkout('${day.workout}')" 
-                                            class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">
-                                            View
-                                        </button>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    html += '</div></div>';
-                }
-            }
-
-            // PROGRESS
-            else if (state.tab === 'progress') {
-                html += '<div class="space-y-6"><h2 class="text-2xl font-bold">Progress Tracker</h2>';
-                
-                html += `
-                    <div class="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-6 border-2 border-yellow-200">
-                        <h3 class="text-lg font-bold text-yellow-900 mb-4">🏆 Personal Records</h3>
-                `;
-                
-                const prEntries = Object.entries(state.prs);
-                if (prEntries.length === 0) {
-                    html += '<p class="text-sm text-gray-600">No PRs yet!</p>';
-                } else {
-                    html += '<div class="space-y-3">';
-                    prEntries.forEach(([ex, rec]) => {
-                        html += `
-                            <div class="bg-white rounded-lg p-4 border border-yellow-200">
-                                <p class="font-semibold text-sm">${ex}</p>
-                                <p class="text-lg font-bold text-yellow-600">${rec.value}</p>
-                                <p class="text-xs text-gray-500">${new Date(rec.date).toLocaleDateString()} • ${rec.phase}</p>
-                            </div>
-                        `;
-                    });
-                    html += '</div>';
-                }
-                
-                html += '</div>';
-
-                html += `
-                    <div class="bg-white rounded-xl p-6 border-2 border-gray-200">
-                        <h3 class="text-lg font-bold mb-3">Workout History</h3>
-                `;
-
-                const logEntries = Object.entries(state.workoutLog).reverse().slice(0, 10);
-                if (logEntries.length === 0) {
-                    html += '<p class="text-sm text-gray-500">No workouts logged yet</p>';
-                } else {
-                    html += '<div class="space-y-3">';
-                    logEntries.forEach(([date, log]) => {
-                        html += `
-                            <div class="p-4 bg-gray-50 rounded-lg border">
-                                <div class="flex justify-between items-center mb-2">
-                                    <div>
-                                        <p class="font-semibold text-sm">${log.workout}</p>
-                                        <p class="text-xs text-gray-500">${new Date(date).toLocaleDateString()}</p>
-                                        <p class="text-xs text-purple-600">${log.phase} Phase</p>
-                                    </div>
-                                    <span class="text-green-500 text-xl">✓</span>
-                                </div>
-                                ${log.note ? `
-                                    <div class="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
-                                        <p class="text-xs font-semibold text-yellow-700">Notes:</p>
-                                        <p class="text-xs text-gray-700">${log.note}</p>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `;
-                    });
-                    html += '</div>';
-                }
-
-                html += '</div></div>';
-            }
-
-            // CARDIO TAB
-            else if (state.tab === 'cardio') {
-                const cycleInfo = getCycleInfo(state.lastPeriod);
-                const recommendation = getCardioRecommendation(cycleInfo);
-                const cardioThisWeek = getCardioThisWeek();
-
-                html += '<div class="space-y-6"><h2 class="text-2xl font-bold">Cardio Tracker</h2>';
-
-                // Cycle recommendation
-                if (cycleInfo) {
-                    const bgColor = recommendation.color === 'green' ? 'bg-green-50 border-green-200' : 
-                                   recommendation.color === 'yellow' ? 'bg-yellow-50 border-yellow-200' : 
-                                   'bg-red-50 border-red-200';
-                    const textColor = recommendation.color === 'green' ? 'text-green-900' : 
-                                     recommendation.color === 'yellow' ? 'text-yellow-900' : 
-                                     'text-red-900';
-                    
-                    html += `
-                        <div class="${bgColor} rounded-xl p-6 border-2">
-                            <div class="flex items-center justify-between mb-3">
-                                <div>
-                                    <p class="text-sm text-gray-600">Cycle Day ${cycleInfo.cycleDay} - ${cycleInfo.phase}</p>
-                                    <h3 class="text-xl font-bold ${textColor}">
-                                        ${recommendation.recommended ? '✅ Cardio Recommended' : '⚠️ Skip Cardio Today'}
-                                    </h3>
-                                </div>
-                                <span class="text-4xl">${recommendation.recommended ? '💪' : '🛌'}</span>
-                            </div>
-                            <p class="text-sm text-gray-700 mb-2">${recommendation.reason}</p>
-                            ${recommendation.sessions ? `<p class="text-sm font-semibold ${textColor}">Target: ${recommendation.sessions}</p>` : ''}
-                        </div>
-                    `;
-                }
-
-                // This week stats
-                html += `
-                    <div class="bg-white rounded-xl p-6 border-2 border-gray-200">
-                        <h3 class="text-lg font-bold mb-3">This Week</h3>
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <p class="text-3xl font-bold text-blue-600">${cardioThisWeek}</p>
-                                <p class="text-sm text-gray-600">sessions completed</p>
-                            </div>
-                            <div class="text-right">
-                                ${cardioThisWeek >= 3 ? 
-                                    '<p class="text-sm text-orange-600 font-semibold">⚠️ At limit (3/week max)</p>' :
-                                    cardioThisWeek === 2 ?
-                                    '<p class="text-sm text-green-600 font-semibold">✅ Good! (1 more OK)</p>' :
-                                    '<p class="text-sm text-gray-600">Keep going!</p>'
-                                }
-                            </div>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div class="bg-blue-600 h-2 rounded-full transition-all" 
-                                style="width: ${Math.min((cardioThisWeek / 3) * 100, 100)}%"></div>
-                        </div>
-                    </div>
-                `;
-
-                // 12-3-30 Card
-                html += `
-                    <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border-2 border-blue-200">
-                        <h3 class="text-xl font-bold text-blue-900 mb-3">12-3-30 Incline Walk</h3>
-                        <div class="space-y-2 text-sm text-gray-700 mb-4">
-                            <p>• <strong>12%</strong> incline</p>
-                            <p>• <strong>3.0 mph</strong> speed</p>
-                            <p>• <strong>30 minutes</strong> duration</p>
-                        </div>
-
-                        ${state.cardioRunning ? `
-                            <div class="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl p-4 mb-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="font-semibold">Time Remaining</span>
-                                    <div class="flex items-center gap-4">
-                                        <span class="text-3xl font-bold">${Math.floor(state.cardioTimer/60)}:${(state.cardioTimer%60).toString().padStart(2,'0')}</span>
-                                        <button onclick="stopCardioTimer()" class="px-3 py-1 bg-white/20 rounded-lg text-sm">Stop</button>
-                                    </div>
-                                </div>
-                                <div class="w-full bg-white/20 rounded-full h-2 mt-3">
-                                    <div class="bg-white h-2 rounded-full transition-all" 
-                                        style="width: ${((1800 - state.cardioTimer) / 1800) * 100}%"></div>
-                                </div>
-                            </div>
-                            <button onclick="logCardio()" 
-                                class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold">
-                                ✓ Complete Session
-                            </button>
-                        ` : `
-                            <button onclick="startCardioTimer()" 
-                                class="w-full ${recommendation.recommended && cardioThisWeek < 3 ? 'bg-blue-600' : 'bg-gray-400'} text-white py-3 rounded-lg font-semibold mb-2"
-                                ${!recommendation.recommended || cardioThisWeek >= 3 ? 'disabled' : ''}>
-                                ${!recommendation.recommended ? '⚠️ Not Recommended Today' : 
-                                  cardioThisWeek >= 3 ? '⚠️ 3 Sessions Done This Week' : 
-                                  '▶️ Start 30 Min Timer'}
-                            </button>
-                            ${(!recommendation.recommended || cardioThisWeek >= 3) ? 
-                                '<p class="text-xs text-center text-gray-500">Take a rest day or do a light 10k step walk instead</p>' : 
-                                '<button onclick="logCardio()" class="w-full bg-gray-200 text-gray-700 py-2 rounded-lg text-sm">Log Without Timer</button>'
-                            }
-                        `}
-                    </div>
-                `;
-
-                // Best days to do cardio
-                const activeSchedule = state.customSchedule || schedule;
-                const restDays = activeSchedule.filter(d => d.workout === 'Rest').map(d => d.day);
-                const lowerDays = activeSchedule.filter(d => d.workout.includes('Lower')).map(d => d.day);
-                
-                html += `
-                    <div class="bg-white rounded-xl p-6 border-2 border-gray-200">
-                        <h3 class="text-lg font-bold mb-3">📅 Best Days for Cardio</h3>
-                        <div class="space-y-2 text-sm">
-                            ${restDays.length > 0 ? `
-                                <p><strong>Rest Days:</strong> ${restDays.join(', ')}</p>
-                                <p class="text-xs text-gray-600">Perfect for 12-3-30 - no interference with lifting</p>
-                            ` : '<p class="text-orange-600"><strong>No rest days!</strong> Consider adding 1-2 for cardio & recovery</p>'}
-                            ${lowerDays.length > 0 ? `
-                                <p><strong>After Lower Body:</strong> ${lowerDays.join(', ')}</p>
-                                <p class="text-xs text-gray-600">Active recovery option - do cardio AFTER lifting, not before</p>
-                            ` : ''}
-                        </div>
-                        <div class="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                            <p class="text-xs font-semibold text-yellow-800 mb-1">⚠️ Important:</p>
-                            <p class="text-xs text-gray-700">Always do cardio AFTER lifting, never before! Cardio before lifting kills your strength.</p>
-                        </div>
-                        <button onclick="state.tab='workout'; render();" class="w-full mt-3 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-semibold">
-                            Customize Workout Schedule →
-                        </button>
-                    </div>
-                `;
-
-                // Recent cardio sessions
-                html += `
-                    <div class="bg-white rounded-xl p-6 border-2 border-gray-200">
-                        <h3 class="text-lg font-bold mb-3">Recent Sessions</h3>
-                `;
-
-                const cardioEntries = Object.entries(state.cardioLog).reverse().slice(0, 10);
-                if (cardioEntries.length === 0) {
-                    html += '<p class="text-sm text-gray-500">No cardio logged yet</p>';
-                } else {
-                    html += '<div class="space-y-2">';
-                    cardioEntries.forEach(([date, log]) => {
-                        html += `
-                            <div class="p-3 bg-gray-50 rounded-lg border flex justify-between items-center">
-                                <div>
-                                    <p class="font-semibold text-sm">${log.type} - ${log.duration} min</p>
-                                    <p class="text-xs text-gray-500">${new Date(date).toLocaleDateString()}</p>
-                                    <p class="text-xs text-purple-600">${log.phase} Phase</p>
-                                </div>
-                                <span class="text-green-500 text-xl">✓</span>
-                            </div>
-                        `;
-                    });
-                    html += '</div>';
-                }
-
-                html += '</div></div>';
-            }
-
-            // BOTTOM NAV
-            html += `
-                <div class="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-lg">
-                    <div class="max-w-2xl mx-auto flex justify-around py-3">
-                        <button onclick="setTab('dashboard')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'dashboard' ? 'tab-active' : ''}">
-                            <span class="text-xl">📈</span>
-                            <span class="text-xs font-semibold">Home</span>
-                        </button>
-                        <button onclick="setTab('workout')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'workout' ? 'tab-active' : ''}">
-                            <span class="text-xl">💪</span>
-                            <span class="text-xs font-semibold">Workout</span>
-                        </button>
-                        <button onclick="setTab('cardio')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'cardio' ? 'tab-active' : ''}">
-                            <span class="text-xl">🏃‍♀️</span>
-                            <span class="text-xs font-semibold">Cardio</span>
-                        </button>
-                        <button onclick="setTab('progress')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'progress' ? 'tab-active' : ''}">
-                            <span class="text-xl">📅</span>
-                            <span class="text-xs font-semibold">Progress</span>
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            app.innerHTML = html;
-
-            // Attach event listeners
-            const periodInput = document.getElementById('lastPeriodInput');
-            if (periodInput) {
-                periodInput.addEventListener('change', (e) => {
-                    state.lastPeriod = e.target.value;
-                    save();
-                    render();
-                });
-            }
-
-            const weightInput = document.getElementById('weightInput');
-            if (weightInput) {
-                weightInput.addEventListener('change', (e) => {
-                    state.weight = e.target.value;
-                    save();
-                    render();
-                });
-            }
-
-            const noteInput = document.getElementById('noteInput');
-            if (noteInput) {
-                noteInput.addEventListener('input', (e) => {
-                    state.note = e.target.value;
-                });
-            }
-
-            const prInput = document.getElementById('prInput');
-            if (prInput) {
-                prInput.addEventListener('input', (e) => {
-                    state.prValue = e.target.value;
-                });
-            }
-
-            const proteinInput = document.getElementById('proteinInput');
-            if (proteinInput) {
-                proteinInput.addEventListener('input', (e) => {
-                    state.proteinAmount = e.target.value;
-                });
-                proteinInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        addProtein();
-                    }
-                });
-            }
-
-            // Attach schedule dropdown listeners
-            if (state.editingSchedule) {
-                const currentSchedule = state.customSchedule || schedule;
-                currentSchedule.forEach((day, i) => {
-                    const dropdown = document.getElementById(`schedule-${i}`);
-                    if (dropdown) {
-                        dropdown.addEventListener('change', (e) => {
-                            updateSchedule(i, e.target.value);
-                        });
-                    }
-                });
-            }
-
-            // Attach custom exercise input listeners
-            const newExNameInput = document.getElementById('newExerciseName');
-            if (newExNameInput) {
-                newExNameInput.addEventListener('input', (e) => {
-                    state.newExerciseName = e.target.value;
-                });
-            }
-
-            const newExSetsInput = document.getElementById('newExerciseSets');
-            if (newExSetsInput) {
-                newExSetsInput.addEventListener('input', (e) => {
-                    state.newExerciseSets = e.target.value;
-                });
-            }
-
-            const newExRepsInput = document.getElementById('newExerciseReps');
-            if (newExRepsInput) {
-                newExRepsInput.addEventListener('input', (e) => {
-                    state.newExerciseReps = e.target.value;
-                });
-            }
-        }
-
-        // Global functions
-        function getTodayProtein() {
-            const today = new Date().toISOString().split('T')[0];
-            if (state.proteinToday.date !== today) {
-                state.proteinToday = { date: today, amount: 0 };
-                save();
-            }
-            return state.proteinToday.amount;
-        }
-
-        function toggleProteinInput() {
-            state.showProteinInput = !state.showProteinInput;
-            render();
-        }
-
-        function quickAddProtein(amount) {
-            const today = new Date().toISOString().split('T')[0];
-            if (state.proteinToday.date !== today) {
-                state.proteinToday = { date: today, amount: 0 };
-            }
-            state.proteinToday.amount += amount;
-            save();
-            render();
-        }
-
-        function setTab(tab) {
-            state.tab = tab;
-            render();
-        }
-
-        function selectWorkout(workout) {
-            state.selectedWorkout = workout;
-            state.tab = 'workout';
-            render();
-        }
-
-        function backToSchedule() {
-            state.selectedWorkout = null;
-            state.timer = 0;
-            state.timerRunning = false;
-            render();
-        }
-
-        function stopTimer() {
-            state.timer = 0;
-            state.timerRunning = false;
-            render();
-        }
-
-        function editPR(exercise) {
-            state.editingPR = exercise;
-            state.prValue = state.prs[exercise]?.value || '';
-            render();
-        }
-
-        function cancelPR() {
-            state.editingPR = null;
-            state.prValue = '';
-            render();
-        }
-
-        function toggleScheduleEdit() {
-            state.editingSchedule = !state.editingSchedule;
-            render();
-        }
-
-        function updateSchedule(dayIndex, newWorkout) {
-            const currentSchedule = state.customSchedule || JSON.parse(JSON.stringify(schedule));
-            currentSchedule[dayIndex].workout = newWorkout;
-            state.customSchedule = currentSchedule;
-            save();
-            render();
-        }
-
-        function resetSchedule() {
-            state.customSchedule = null;
-            state.editingSchedule = false;
-            save();
-            render();
-        }
-
-        function toggleAddExercise() {
-            state.showAddExercise = !state.showAddExercise;
-            render();
-        }
-
-        function addCustomExercise() {
-            if (state.newExerciseName.trim()) {
-                state.customExercises.push({
-                    name: state.newExerciseName.trim(),
-                    sets: state.newExerciseSets,
-                    reps: state.newExerciseReps,
-                    rest: 60
-                });
-                state.newExerciseName = '';
-                state.newExerciseSets = '3';
-                state.newExerciseReps = '10-12';
-                state.showAddExercise = false;
-                render();
-            }
-        }
-
-        function removeCustomExercise(index) {
-            state.customExercises.splice(index, 1);
-            render();
-        }
-
-        // Initial render
+        state.loginMode = 'login';
         render();
-    </script>
+        return;
+    }
+
+    const user = state.users[username];
+
+    if (!user || user.password !== password) {
+        alert('Invalid login');
+        return;
+    }
+
+    state.currentUser = username;
+    state.showAuth = false;
+
+    localStorage.setItem('currentUser', username);
+
+    loadUserData();
+
+    render();
+}
+
+function toggleAuthMode() {
+    state.loginMode = state.loginMode === 'login' ? 'signup' : 'login';
+    render();
+}
+
+function logout() {
+    localStorage.removeItem('currentUser');
+
+    state.currentUser = '';
+    state.showAuth = true;
+
+    render();
+}
+
+function resetCycle() {
+    state.lastPeriod = '';
+    save();
+    render();
+}
+
+function setTab(tab) {
+    state.tab = tab;
+    render();
+}
+
+function selectWorkout(workout) {
+    state.selectedWorkout = workout;
+    state.tab = 'workout';
+    render();
+}
+
+function completeWorkout() {
+    const date = new Date().toISOString().split('T')[0];
+
+    state.workoutLog[date] = {
+        workout: state.selectedWorkout
+    };
+
+    save();
+
+    alert('Workout Completed ✅');
+
+    state.selectedWorkout = null;
+
+    render();
+}
+
+function quickAddProtein(amount) {
+    const today = new Date().toISOString().split('T')[0];
+
+    if (state.proteinToday.date !== today) {
+        state.proteinToday = {
+            date: today,
+            amount: 0
+        };
+    }
+
+    state.proteinToday.amount += amount;
+
+    save();
+
+    render();
+}
+
+function getTodayProtein() {
+    const today = new Date().toISOString().split('T')[0];
+
+    if (state.proteinToday.date !== today) {
+        return 0;
+    }
+
+    return state.proteinToday.amount;
+}
+
+function render() {
+
+    const app = document.getElementById('app');
+
+    if (state.showAuth) {
+        app.innerHTML = `
+            <div class="min-h-screen flex items-center justify-center p-6">
+                <div class="bg-white rounded-3xl shadow-xl p-6 w-full max-w-sm border-2 border-purple-200">
+                    
+                    <div class="text-center mb-6">
+                        <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                            Body Recomp Tracker
+                        </h1>
+
+                        <p class="text-gray-500 text-sm">
+                            ${state.loginMode === 'login' ? 'Welcome Back' : 'Create Account'}
+                        </p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <input
+                            type="text"
+                            id="authUsername"
+                            placeholder="Username"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"
+                        >
+
+                        <input
+                            type="password"
+                            id="authPassword"
+                            placeholder="Password"
+                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"
+                        >
+
+                        <button onclick="handleAuth()"
+                            class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-semibold">
+                            ${state.loginMode === 'login' ? 'Login' : 'Sign Up'}
+                        </button>
+
+                        <button onclick="toggleAuthMode()"
+                            class="w-full text-purple-600 text-sm font-semibold">
+                            ${state.loginMode === 'login'
+                                ? 'Need an account? Sign Up'
+                                : 'Already have an account? Login'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('authUsername')?.addEventListener('input', (e) => {
+            state.username = e.target.value;
+        });
+
+        document.getElementById('authPassword')?.addEventListener('input', (e) => {
+            state.password = e.target.value;
+        });
+
+        return;
+    }
+
+    const cycleInfo = getCycleInfo(state.lastPeriod);
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const todayWorkout = schedule.find(d => d.day === today);
+
+    let html = `
+
+    <div class="text-center mb-6 pt-4 relative">
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+            Body Recomp Tracker
+        </h1>
+
+        <p class="text-sm text-gray-600">
+            Welcome, ${state.currentUser}
+        </p>
+
+        <button onclick="logout()"
+            class="absolute top-4 right-0 px-3 py-2 bg-red-100 text-red-600 rounded-lg text-sm font-semibold">
+            Logout
+        </button>
+    </div>
+    `;
+
+    if (state.tab === 'dashboard') {
+
+        html += `
+        <div class="space-y-6">
+        `;
+
+        if (cycleInfo) {
+            html += `
+                <div class="bg-white rounded-2xl p-6 border-2 border-pink-200 shadow-sm">
+                    <h2 class="text-2xl font-bold text-purple-700 mb-2">
+                        Cycle Day ${cycleInfo.cycleDay}
+                    </h2>
+
+                    <p class="text-lg font-semibold mb-4">
+                        ${cycleInfo.phase} Phase
+                    </p>
+
+                    <button onclick="resetCycle()"
+                        class="w-full bg-red-100 text-red-700 py-2 rounded-xl font-semibold border border-red-300">
+                        🩸 Reset Menstrual Cycle
+                    </button>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="bg-yellow-50 rounded-2xl p-6 border-2 border-yellow-200">
+                    <p class="mb-3 font-semibold text-gray-700">
+                        Set your last period date
+                    </p>
+
+                    <input
+                        type="date"
+                        id="lastPeriodInput"
+                        value="${state.lastPeriod}"
+                        class="w-full px-4 py-3 border-2 border-yellow-300 rounded-xl"
+                    >
+                </div>
+            `;
+        }
+
+        html += `
+            <div class="bg-white rounded-2xl p-6 border-2 border-gray-200 shadow-sm">
+                <h2 class="text-xl font-bold mb-3">
+                    Today's Workout
+                </h2>
+
+                <p class="text-lg font-semibold text-blue-600 mb-4">
+                    ${todayWorkout.workout}
+                </p>
+
+                ${todayWorkout.workout !== 'Rest' ? `
+                    <button onclick="selectWorkout('${todayWorkout.workout}')"
+                        class="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold">
+                        Start Workout
+                    </button>
+                ` : `
+                    <div class="text-center py-4 text-gray-500">
+                        Rest Day 😴
+                    </div>
+                `}
+            </div>
+
+            <div class="bg-white rounded-2xl p-6 border-2 border-green-200 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Protein Today</p>
+                        <p class="text-4xl font-bold text-green-600">
+                            ${getTodayProtein()}g
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="quickAddProtein(25)"
+                        class="bg-green-100 text-green-700 py-2 rounded-xl font-semibold">
+                        +25g
+                    </button>
+
+                    <button onclick="quickAddProtein(30)"
+                        class="bg-green-100 text-green-700 py-2 rounded-xl font-semibold">
+                        +30g
+                    </button>
+
+                    <button onclick="quickAddProtein(20)"
+                        class="bg-green-100 text-green-700 py-2 rounded-xl font-semibold">
+                        +20g
+                    </button>
+                </div>
+            </div>
+        `;
+
+        html += `</div>`;
+    }
+
+    else if (state.tab === 'workout') {
+
+        if (state.selectedWorkout) {
+
+            html += `
+                <div class="space-y-4">
+
+                    <button onclick="state.selectedWorkout=null; render();"
+                        class="text-blue-600 font-semibold">
+                        ← Back
+                    </button>
+
+                    <div class="bg-white rounded-2xl p-6 border-2 border-blue-200 shadow-sm">
+                        <h2 class="text-2xl font-bold mb-4">
+                            ${state.selectedWorkout}
+                        </h2>
+
+                        <div class="space-y-3">
+                            ${workouts[state.selectedWorkout].map(ex => `
+                                <div class="p-4 bg-gray-50 rounded-xl border">
+                                    <p class="font-bold">${ex.name}</p>
+                                    <p class="text-sm text-gray-500">
+                                        ${ex.sets} sets × ${ex.reps}
+                                    </p>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <button onclick="completeWorkout()"
+                            class="w-full mt-6 bg-green-600 text-white py-3 rounded-xl font-semibold">
+                            Complete Workout
+                        </button>
+                    </div>
+                </div>
+            `;
+
+        } else {
+
+            html += `
+                <div class="space-y-3">
+                    <h2 class="text-2xl font-bold mb-4">
+                        Weekly Schedule
+                    </h2>
+
+                    ${schedule.map(day => `
+                        <div class="bg-white rounded-2xl p-4 border-2 border-gray-200 flex justify-between items-center">
+                            <div>
+                                <p class="font-bold">${day.day}</p>
+                                <p class="text-sm text-blue-600">
+                                    ${day.workout}
+                                </p>
+                            </div>
+
+                            ${day.workout !== 'Rest' ? `
+                                <button onclick="selectWorkout('${day.workout}')"
+                                    class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold">
+                                    View
+                                </button>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+    }
+
+    else if (state.tab === 'progress') {
+
+        html += `
+            <div class="space-y-4">
+                <h2 class="text-2xl font-bold mb-4">
+                    Progress
+                </h2>
+
+                ${Object.entries(state.workoutLog).reverse().map(([date, log]) => `
+                    <div class="bg-white rounded-2xl p-4 border-2 border-gray-200">
+                        <p class="font-bold text-blue-600">
+                            ${log.workout}
+                        </p>
+
+                        <p class="text-sm text-gray-500">
+                            ${date}
+                        </p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    html += `
+
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-lg">
+        <div class="max-w-2xl mx-auto flex justify-around py-3">
+
+            <button onclick="setTab('dashboard')"
+                class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'dashboard' ? 'tab-active' : ''}">
+                <span class="text-xl">📈</span>
+                <span class="text-xs font-semibold">Home</span>
+            </button>
+
+            <button onclick="setTab('workout')"
+                class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'workout' ? 'tab-active' : ''}">
+                <span class="text-xl">💪</span>
+                <span class="text-xs font-semibold">Workout</span>
+            </button>
+
+            <button onclick="setTab('progress')"
+                class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'progress' ? 'tab-active' : ''}">
+                <span class="text-xl">📅</span>
+                <span class="text-xs font-semibold">Progress</span>
+            </button>
+        </div>
+    </div>
+    `;
+
+    app.innerHTML = html;
+
+    document.getElementById('lastPeriodInput')?.addEventListener('change', (e) => {
+        state.lastPeriod = e.target.value;
+        save();
+        render();
+    });
+}
+
+if (state.currentUser) {
+    loadUserData();
+}
+
+render();
+
+</script>
 </body>
 </html>
+```
+
+# GitHub Pages Setup
+
+1. Create a repository on GitHub
+2. Name it anything
+3. Upload this as `index.html`
+4. Go to:
+
+Settings → Pages
+
+5. Under Source:
+
+* Deploy from branch
+* main branch
+* /(root)
+
+6. Save
+
+Then your app will be live at:
+
+```text
+https://yourusername.github.io/repositoryname/
+```
