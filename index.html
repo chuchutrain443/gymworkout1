@@ -12,13 +12,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
-        }
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
         #root { min-height: 100vh; }
         input, select, textarea { font-size: 16px !important; }
     </style>
@@ -28,111 +22,112 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // All icon components inline
-        const Icon = ({ d, size = 24, className = "" }) => (
+        // Icons
+        const Icon = ({ paths, size = 24, className = "" }) => (
             <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {Array.isArray(d) ? d.map((path, i) => <path key={i} d={path} />) : <path d={d} />}
+                {paths.map((d, i) => d.includes('circle') || d.includes('rect') || d.includes('polyline') || d.includes('line') ? 
+                    React.createElement(d.split(' ')[0], { key: i, ...parseAttrs(d) }) : 
+                    <path key={i} d={d} />
+                )}
             </svg>
         );
+        const parseAttrs = (str) => {
+            const attrs = {};
+            str.match(/(\w+)="([^"]*)"/g)?.forEach(attr => {
+                const [key, val] = attr.split('=');
+                attrs[key] = val.replace(/"/g, '');
+            });
+            return attrs;
+        };
 
-        const Calendar = (props) => <Icon {...props} d={["M16 2v4M8 2v4M3 10h18", "M3 4h18a2 2 0 012 2v14a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2z"]} />;
-        const Dumbbell = (props) => <Icon {...props} d={["m6.5 6.5 11 11", "M21 21l-1-1", "M3 3l1 1", "M18 22l4-4", "M2 6l4-4", "M3 10l7-7", "M14 21l7-7"]} />;
-        const Pill = (props) => <Icon {...props} d={["m10.5 20.5 10-10a4.95 4.95 0 10-7-7l-10 10a4.95 4.95 0 107 7z", "m8.5 8.5 7 7"]} />;
-        const TrendingUp = (props) => <Icon {...props} d={["M23 6L13.5 15.5 8.5 10.5 1 18", "M17 6h6v6"]} />;
-        const Check = (props) => <Icon {...props} d="M20 6L9 17l-5-5" />;
-        const Plus = (props) => <Icon {...props} d={["M12 5v14", "M5 12h14"]} />;
-        const X = (props) => <Icon {...props} d={["M18 6L6 18", "M6 6l12 12"]} />;
-        const Award = (props) => <Icon {...props} d={["M12 2a6 6 0 100 12 6 6 0 000-12z", "M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"]} />;
-        const Download = (props) => <Icon {...props} d={["M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"]} />;
-        const Edit3 = (props) => <Icon {...props} d={["M12 20h9", "M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"]} />;
-        const Save = (props) => <Icon {...props} d={["M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z", "M17 21v-8H7v8", "M7 3v5h8"]} />;
-        const Clock = (props) => <Icon {...props} d={["M12 2a10 10 0 100 20 10 10 0 000-20z", "M12 6v6l4 2"]} />;
-        const BarChart3 = (props) => <Icon {...props} d={["M3 3v18h18", "M18 17V9", "M13 17V5", "M8 17v-3"]} />;
-        const Settings = (props) => <Icon {...props} d={["M12 2a10 10 0 100 20 10 10 0 000-20z", "M12 8a4 4 0 100 8 4 4 0 000-8z"]} />;
-        const RefreshCw = (props) => <Icon {...props} d={["M21 2v6h-6", "M3 12a9 9 0 0115-6.7L21 8", "M3 22v-6h6", "M21 12a9 9 0 01-15 6.7L3 16"]} />;
+        const Calendar = (p) => <Icon {...p} paths={['M16 2v4','M8 2v4','M3 10h18','rect x="3" y="4" width="18" height="18" rx="2"']} />;
+        const Dumbbell = (p) => <Icon {...p} paths={['m6.5 6.5 11 11','M21 21l-1-1','M3 3l1 1','M18 22l4-4','M2 6l4-4','M3 10l7-7','M14 21l7-7']} />;
+        const Pill = (p) => <Icon {...p} paths={['m10.5 20.5 10-10a4.95 4.95 0 10-7-7l-10 10a4.95 4.95 0 107 7z','m8.5 8.5 7 7']} />;
+        const TrendingUp = (p) => <Icon {...p} paths={['M23 6L13.5 15.5 8.5 10.5 1 18','polyline points="17 6 23 6 23 12"']} />;
+        const Check = (p) => <Icon {...p} paths={['M20 6L9 17l-5-5']} />;
+        const Plus = (p) => <Icon {...p} paths={['M12 5v14','M5 12h14']} />;
+        const X = (p) => <Icon {...p} paths={['M18 6L6 18','M6 6l12 12']} />;
+        const Award = (p) => <Icon {...p} paths={['circle cx="12" cy="8" r="6"','M15.477 12.89L17 22l-5-3-5 3 1.523-9.11']} />;
+        const Download = (p) => <Icon {...p} paths={['M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4','polyline points="7 10 12 15 17 10"','line x1="12" y1="15" x2="12" y2="3"']} />;
+        const Edit3 = (p) => <Icon {...p} paths={['M12 20h9','M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z']} />;
+        const Save = (p) => <Icon {...p} paths={['M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z','polyline points="17 21 17 13 7 13 7 21"','polyline points="7 3 7 8 15 8"']} />;
+        const Clock = (p) => <Icon {...p} paths={['circle cx="12" cy="12" r="10"','polyline points="12 6 12 12 16 14"']} />;
+        const Settings = (p) => <Icon {...p} paths={['circle cx="12" cy="12" r="3"','M12 1v6m0 6v6M5.64 5.64l4.24 4.24m6.36 0l4.24-4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m6.36 0l4.24 4.24']} />;
 
-        // Cycle calculation
-        const getCycleInfo = (lastPeriodDate, cycleLength = 28) => {
+        const getCycleInfo = (lastPeriodDate) => {
             if (!lastPeriodDate) return null;
             const today = new Date();
             const lastPeriod = new Date(lastPeriodDate);
             const daysDiff = Math.floor((today - lastPeriod) / (1000 * 60 * 60 * 24));
-            const cycleDay = (daysDiff % cycleLength) + 1;
+            const cycleDay = (daysDiff % 28) + 1;
             
             let phase, phaseDay, description, trainingIntensity, calories, supplements;
             
-            if (cycleDay >= 1 && cycleDay <= 5) {
+            if (cycleDay <= 5) {
                 phase = 'Menstrual'; phaseDay = cycleDay;
-                description = 'The Reset - Lower energy initially, rebounds by Day 3-4';
-                trainingIntensity = '70-85% intensity, reduce volume by 20% if needed';
+                description = 'The Reset - Lower energy initially';
+                trainingIntensity = '70-85% intensity';
                 calories = '2,150-2,200 kcal';
-                supplements = ['Omega-3 (3g)', 'Iron (18-25mg)', 'Magnesium (400mg)', 'Vitamin D3 (3,000 IU)'];
-            } else if (cycleDay >= 6 && cycleDay <= 14) {
+                supplements = ['Omega-3 (3g)', 'Iron (18-25mg)', 'Magnesium (400mg)'];
+            } else if (cycleDay <= 14) {
                 phase = 'Follicular'; phaseDay = cycleDay - 5;
-                description = 'The Performance Window - PEAK energy and recovery';
-                trainingIntensity = '80-90% intensity, 100% volume - PUSH FOR PRS!';
+                description = 'PEAK energy and recovery';
+                trainingIntensity = '80-90% - PUSH FOR PRS!';
                 calories = '2,100-2,150 kcal';
-                supplements = ['Omega-3 (2g)', 'Magnesium (300mg)', 'Vitamin D3 (3,000 IU)', 'Creatine (5g)', 'Caffeine (200-300mg pre-workout)'];
-            } else if (cycleDay >= 15 && cycleDay <= 17) {
+                supplements = ['Omega-3 (2g)', 'Magnesium (300mg)', 'Creatine (5g)'];
+            } else if (cycleDay <= 17) {
                 phase = 'Ovulation'; phaseDay = cycleDay - 14;
-                description = 'The Peak - MAXIMUM STRENGTH POTENTIAL';
-                trainingIntensity = '85-95% intensity - GO FOR PRS!';
+                description = 'MAXIMUM STRENGTH';
+                trainingIntensity = '85-95% - GO FOR PRS!';
                 calories = '2,150-2,200 kcal';
-                supplements = ['Omega-3 (2g)', 'Magnesium (300mg)', 'Vitamin D3 (3,000 IU)', 'Creatine (5g)', 'Caffeine (200-300mg pre-workout)'];
+                supplements = ['Omega-3 (2g)', 'Creatine (5g)', 'Caffeine (200-300mg)'];
             } else {
                 phase = 'Luteal'; phaseDay = cycleDay - 17;
-                description = cycleDay <= 24 ? 'Early Luteal - Still strong, maintain intensity' : 'Late Luteal - Reduce volume, honor cravings';
-                trainingIntensity = cycleDay <= 24 ? '80-90% intensity, maintain' : '75-85% intensity, reduce volume 20-30%';
+                description = cycleDay <= 24 ? 'Still strong' : 'Reduce volume';
+                trainingIntensity = cycleDay <= 24 ? '80-90%' : '75-85%, reduce 20-30%';
                 calories = '2,200-2,300 kcal';
-                supplements = ['Omega-3 (2-3g)', 'Magnesium (400-500mg)', 'Vitamin D3 (3,000 IU)', 'Vitamin B6 (50-100mg)', 'Creatine (5g)', 'Caffeine (100-150mg, reduce)'];
+                supplements = ['Omega-3 (3g)', 'Magnesium (400-500mg)', 'B6 (50-100mg)'];
             }
             
             return { cycleDay, phase, phaseDay, description, trainingIntensity, calories, supplements };
         };
 
-        // Workout plans
-        const workoutPlans = {
+        const workouts = {
             'Upper A': [
-                { exercise: 'Barbell Bench Press', sets: 4, reps: '6-8', rest: '2 min' },
-                { exercise: 'Overhead Press', sets: 3, reps: '8-10', rest: '90s' },
-                { exercise: 'Incline Dumbbell Press', sets: 3, reps: '10-12', rest: '60s' },
-                { exercise: 'Cable Tricep Pushdowns', sets: 3, reps: '12-15', rest: '60s' },
-                { exercise: 'Lateral Raises', sets: 4, reps: '15-20', rest: '45s' },
-                { exercise: 'Face Pulls', sets: 3, reps: '15-20', rest: '45s' },
-                { exercise: 'Plank', sets: 3, reps: '45-60s', rest: '60s' }
+                { ex: 'Barbell Bench Press', sets: 4, reps: '6-8', rest: '120' },
+                { ex: 'Overhead Press', sets: 3, reps: '8-10', rest: '90' },
+                { ex: 'Incline DB Press', sets: 3, reps: '10-12', rest: '60' },
+                { ex: 'Tricep Pushdowns', sets: 3, reps: '12-15', rest: '60' },
+                { ex: 'Lateral Raises', sets: 4, reps: '15-20', rest: '45' },
+                { ex: 'Face Pulls', sets: 3, reps: '15-20', rest: '45' },
             ],
             'Lower A': [
-                { exercise: 'Barbell Back Squat', sets: 4, reps: '6-8', rest: '2-3 min' },
-                { exercise: 'Romanian Deadlift', sets: 3, reps: '8-10', rest: '2 min' },
-                { exercise: 'Bulgarian Split Squats', sets: 3, reps: '10-12/leg', rest: '90s' },
-                { exercise: 'Leg Press', sets: 3, reps: '12-15', rest: '60s' },
-                { exercise: 'Leg Curls', sets: 3, reps: '12-15', rest: '60s' },
-                { exercise: 'Glute Bridges/Hip Thrust', sets: 4, reps: '12-15', rest: '60s' },
-                { exercise: 'Calf Raises', sets: 3, reps: '15-20', rest: '45s' },
-                { exercise: 'Ab Wheel Rollouts', sets: 3, reps: '10-15', rest: '60s' }
+                { ex: 'Back Squat', sets: 4, reps: '6-8', rest: '180' },
+                { ex: 'Romanian Deadlift', sets: 3, reps: '8-10', rest: '120' },
+                { ex: 'Bulgarian Split Squats', sets: 3, reps: '10-12/leg', rest: '90' },
+                { ex: 'Leg Press', sets: 3, reps: '12-15', rest: '60' },
+                { ex: 'Glute Bridges', sets: 4, reps: '12-15', rest: '60' },
+                { ex: 'Calf Raises', sets: 3, reps: '15-20', rest: '45' },
             ],
             'Upper B': [
-                { exercise: 'Barbell Row', sets: 4, reps: '6-8', rest: '2 min' },
-                { exercise: 'Pull-Ups/Lat Pulldown', sets: 4, reps: '8-10', rest: '90s' },
-                { exercise: 'Chest-Supported Row', sets: 3, reps: '10-12', rest: '60s' },
-                { exercise: 'Dumbbell Curl', sets: 3, reps: '8-10', rest: '60s' },
-                { exercise: 'Hammer Curls', sets: 3, reps: '10-12', rest: '60s' },
-                { exercise: 'Rear Delt Flyes', sets: 3, reps: '15-20', rest: '45s' },
-                { exercise: 'Hanging Leg Raises', sets: 3, reps: '10-15', rest: '60s' }
+                { ex: 'Barbell Row', sets: 4, reps: '6-8', rest: '120' },
+                { ex: 'Pull-Ups', sets: 4, reps: '8-10', rest: '90' },
+                { ex: 'Chest-Supported Row', sets: 3, reps: '10-12', rest: '60' },
+                { ex: 'DB Curl', sets: 3, reps: '8-10', rest: '60' },
+                { ex: 'Hammer Curls', sets: 3, reps: '10-12', rest: '60' },
+                { ex: 'Rear Delt Flyes', sets: 3, reps: '15-20', rest: '45' },
             ],
             'Lower B': [
-                { exercise: 'Conventional Deadlift', sets: 4, reps: '5-6', rest: '3 min' },
-                { exercise: 'Goblet Squat', sets: 3, reps: '8-10', rest: '2 min' },
-                { exercise: 'Walking Lunges', sets: 3, reps: '12/leg', rest: '90s' },
-                { exercise: 'Leg Extensions', sets: 3, reps: '12-15', rest: '60s' },
-                { exercise: 'Single-Leg RDL', sets: 3, reps: '10-12/leg', rest: '90s' },
-                { exercise: 'Hip Thrusts', sets: 4, reps: '10-12', rest: '60s' },
-                { exercise: 'Standing Calf Raises', sets: 3, reps: '12-15', rest: '45s' },
-                { exercise: 'Cable Crunches', sets: 3, reps: '15-20', rest: '60s' }
+                { ex: 'Deadlift', sets: 4, reps: '5-6', rest: '180' },
+                { ex: 'Goblet Squat', sets: 3, reps: '8-10', rest: '120' },
+                { ex: 'Walking Lunges', sets: 3, reps: '12/leg', rest: '90' },
+                { ex: 'Leg Extensions', sets: 3, reps: '12-15', rest: '60' },
+                { ex: 'Hip Thrusts', sets: 4, reps: '10-12', rest: '60' },
+                { ex: 'Calf Raises', sets: 3, reps: '12-15', rest: '45' },
             ]
         };
 
-        const weekSchedule = [
+        const schedule = [
             { day: 'Monday', workout: 'Upper A' },
             { day: 'Tuesday', workout: 'Lower A' },
             { day: 'Wednesday', workout: 'Rest' },
@@ -142,45 +137,84 @@
             { day: 'Sunday', workout: 'Rest' }
         ];
 
-        // Main App
         function App() {
-            const [activeTab, setActiveTab] = useState('dashboard');
-            const [lastPeriodDate, setLastPeriodDate] = useState(localStorage.getItem('lastPeriodDate') || '');
+            const [tab, setTab] = useState('dashboard');
+            const [lastPeriod, setLastPeriod] = useState(localStorage.getItem('lastPeriod') || '');
             const [weight, setWeight] = useState(localStorage.getItem('weight') || '65');
             const [weightHistory, setWeightHistory] = useState(JSON.parse(localStorage.getItem('weightHistory') || '[]'));
+            const [selectedWorkout, setSelectedWorkout] = useState(null);
+            const [workoutLog, setWorkoutLog] = useState(JSON.parse(localStorage.getItem('workoutLog') || '{}'));
+            const [prs, setPRs] = useState(JSON.parse(localStorage.getItem('prs') || '{}'));
+            const [editPR, setEditPR] = useState(null);
+            const [prValue, setPRValue] = useState('');
+            const [note, setNote] = useState('');
+            const [timer, setTimer] = useState(0);
+            const [timerRunning, setTimerRunning] = useState(false);
+            const [customSchedule, setCustomSchedule] = useState(JSON.parse(localStorage.getItem('customSchedule') || 'null'));
+            const [editSchedule, setEditSchedule] = useState(false);
 
-            const cycleInfo = getCycleInfo(lastPeriodDate);
+            const cycleInfo = getCycleInfo(lastPeriod);
             const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-            const todayWorkout = weekSchedule.find(d => d.day === today);
+            const activeSchedule = customSchedule || schedule;
+            const todayWorkout = activeSchedule.find(d => d.day === today);
 
-            const updateWeight = (newWeight) => {
-                setWeight(newWeight);
-                const today = new Date().toISOString().split('T')[0];
-                const newHistory = [...weightHistory.filter(entry => entry.date !== today), { date: today, weight: parseFloat(newWeight) }];
+            useEffect(() => {
+                localStorage.setItem('lastPeriod', lastPeriod);
+                localStorage.setItem('weight', weight);
+                localStorage.setItem('weightHistory', JSON.stringify(weightHistory));
+                localStorage.setItem('workoutLog', JSON.stringify(workoutLog));
+                localStorage.setItem('prs', JSON.stringify(prs));
+                localStorage.setItem('customSchedule', JSON.stringify(customSchedule));
+            }, [lastPeriod, weight, weightHistory, workoutLog, prs, customSchedule]);
+
+            useEffect(() => {
+                let interval;
+                if (timerRunning && timer > 0) {
+                    interval = setInterval(() => {
+                        setTimer(t => {
+                            if (t <= 1) {
+                                setTimerRunning(false);
+                                return 0;
+                            }
+                            return t - 1;
+                        });
+                    }, 1000);
+                }
+                return () => clearInterval(interval);
+            }, [timerRunning, timer]);
+
+            const updateWeight = (w) => {
+                setWeight(w);
+                const date = new Date().toISOString().split('T')[0];
+                const newHistory = [...weightHistory.filter(e => e.date !== date), { date, weight: parseFloat(w) }];
                 setWeightHistory(newHistory.sort((a, b) => new Date(a.date) - new Date(b.date)));
             };
 
-            useEffect(() => {
-                localStorage.setItem('lastPeriodDate', lastPeriodDate);
-                localStorage.setItem('weight', weight);
-                localStorage.setItem('weightHistory', JSON.stringify(weightHistory));
-            }, [lastPeriodDate, weight, weightHistory]);
+            const savePR = (ex) => {
+                if (prValue.trim()) {
+                    setPRs({ ...prs, [ex]: { value: prValue, date: new Date().toISOString().split('T')[0], phase: cycleInfo?.phase } });
+                    setEditPR(null);
+                    setPRValue('');
+                }
+            };
+
+            const logWorkout = () => {
+                const date = new Date().toISOString().split('T')[0];
+                setWorkoutLog({ ...workoutLog, [date]: { workout: selectedWorkout, phase: cycleInfo?.phase, note } });
+                setSelectedWorkout(null);
+                setNote('');
+                setTimer(0);
+                setTimerRunning(false);
+            };
 
             const exportData = () => {
-                const exportObj = {
-                    exportDate: new Date().toISOString(),
-                    lastPeriodDate,
-                    currentWeight: weight,
-                    weightHistory,
-                    stats: { currentCycleDay: cycleInfo?.cycleDay, currentPhase: cycleInfo?.phase }
-                };
-                const dataStr = JSON.stringify(exportObj, null, 2);
-                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(dataBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `recomp-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
-                link.click();
+                const data = { lastPeriod, weight, weightHistory, workoutLog, prs, customSchedule };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `recomp-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
                 URL.revokeObjectURL(url);
             };
 
@@ -188,13 +222,12 @@
                 <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 pb-24">
                     <div className="max-w-2xl mx-auto">
                         <div className="text-center mb-6 pt-4">
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-                                Body Recomp Tracker
-                            </h1>
+                            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">Body Recomp Tracker</h1>
                             <p className="text-sm text-gray-600">Cycle-Synced Training</p>
                         </div>
 
-                        {activeTab === 'dashboard' && (
+                        {/* DASHBOARD */}
+                        {tab === 'dashboard' && (
                             <div className="space-y-6">
                                 {cycleInfo ? (
                                     <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-6 border-2 border-pink-200">
@@ -209,173 +242,283 @@
                                             </div>
                                             <p className="text-sm text-gray-700">{cycleInfo.description}</p>
                                             <div className="pt-3 border-t border-purple-200">
-                                                <p className="text-sm font-semibold text-gray-800 mb-1">Training Today:</p>
+                                                <p className="text-sm font-semibold text-gray-800 mb-1">Training:</p>
                                                 <p className="text-sm text-gray-700">{cycleInfo.trainingIntensity}</p>
                                             </div>
                                             <div className="pt-2">
-                                                <p className="text-sm font-semibold text-gray-800 mb-1">Target Calories:</p>
+                                                <p className="text-sm font-semibold text-gray-800 mb-1">Calories:</p>
                                                 <p className="text-sm text-gray-700">{cycleInfo.calories}</p>
                                             </div>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
-                                        <p className="text-gray-700 mb-3">Set your last period date to track your cycle</p>
-                                        <input
-                                            type="date"
-                                            value={lastPeriodDate}
-                                            onChange={(e) => setLastPeriodDate(e.target.value)}
-                                            className="px-4 py-2 border-2 border-yellow-300 rounded-lg focus:outline-none focus:border-yellow-500"
-                                        />
+                                        <p className="text-gray-700 mb-3">Set your last period date</p>
+                                        <input type="date" value={lastPeriod} onChange={(e) => setLastPeriod(e.target.value)} className="px-4 py-2 border-2 border-yellow-300 rounded-lg" />
                                     </div>
                                 )}
 
                                 {todayWorkout && (
                                     <div className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-sm">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h2 className="text-xl font-bold text-gray-900">Today's Training</h2>
+                                            <h2 className="text-xl font-bold">Today's Training</h2>
                                             <Dumbbell className="text-blue-600" size={28} />
                                         </div>
                                         {todayWorkout.workout === 'Rest' ? (
-                                            <div className="text-center py-8">
-                                                <p className="text-lg text-gray-600">Rest & Recovery Day</p>
-                                                <p className="text-sm text-gray-500 mt-2">Optional: 20-30 min walk</p>
-                                            </div>
+                                            <p className="text-center py-4 text-gray-600">Rest Day</p>
                                         ) : (
-                                            <div>
+                                            <>
                                                 <p className="text-lg font-semibold text-blue-600 mb-3">{todayWorkout.workout}</p>
-                                                <button
-                                                    onClick={() => setActiveTab('workout')}
-                                                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-                                                >
+                                                <button onClick={() => setSelectedWorkout(todayWorkout.workout)} className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold">
                                                     Start Workout
                                                 </button>
-                                            </div>
+                                            </>
                                         )}
                                     </div>
                                 )}
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-white rounded-xl p-4 border-2 border-gray-200 shadow-sm">
-                                        <p className="text-sm text-gray-600 mb-1">Current Weight</p>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                value={weight}
-                                                onChange={(e) => updateWeight(e.target.value)}
-                                                className="w-20 px-2 py-1 border-2 border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                                                step="0.1"
-                                            />
-                                            <span className="text-sm text-gray-600">kg</span>
-                                        </div>
+                                    <div className="bg-white rounded-xl p-4 border-2 border-gray-200">
+                                        <p className="text-sm text-gray-600 mb-1">Weight</p>
+                                        <input type="number" value={weight} onChange={(e) => updateWeight(e.target.value)} step="0.1" className="w-20 px-2 py-1 border-2 rounded" /> kg
                                     </div>
-                                    <div className="bg-white rounded-xl p-4 border-2 border-gray-200 shadow-sm">
-                                        <p className="text-sm text-gray-600 mb-1">Daily Protein</p>
+                                    <div className="bg-white rounded-xl p-4 border-2 border-gray-200">
+                                        <p className="text-sm text-gray-600 mb-1">Protein</p>
                                         <p className="text-2xl font-bold text-blue-600">130-145g</p>
-                                        <p className="text-xs text-gray-500 mt-1">~2x bodyweight</p>
                                     </div>
                                 </div>
 
                                 {cycleInfo && (
                                     <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 border-2 border-green-200">
-                                        <h3 className="font-semibold text-gray-900 mb-2">💡 Nutrition Goals ({cycleInfo.phase} Phase)</h3>
-                                        <p className="text-sm text-gray-700 mb-2">Target: {cycleInfo.calories}</p>
-                                        <div className="text-sm text-gray-600 space-y-1">
-                                            <p>• Protein: 130-145g daily (priority!)</p>
-                                            <p>• Carbs: 200-240g (fuel your workouts)</p>
-                                            <p>• Fats: {cycleInfo.phase === 'Luteal' ? '70-80g (↑ during PMS)' : '55-65g'}</p>
+                                        <h3 className="font-semibold mb-2">💡 Nutrition ({cycleInfo.phase})</h3>
+                                        <p className="text-sm text-gray-700 mb-2">{cycleInfo.calories}</p>
+                                        <div className="text-sm space-y-1">
+                                            <p>• Protein: 130-145g (priority!)</p>
+                                            <p>• Carbs: 200-240g</p>
+                                            <p>• Fats: {cycleInfo.phase === 'Luteal' ? '70-80g' : '55-65g'}</p>
                                         </div>
                                     </div>
                                 )}
 
-                                <button
-                                    onClick={exportData}
-                                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition flex items-center justify-center gap-2 shadow-lg"
-                                >
-                                    <Download size={20} />
-                                    Export All Data
+                                <button onClick={exportData} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
+                                    <Download size={20} /> Export Data
                                 </button>
                             </div>
                         )}
 
-                        {activeTab === 'workout' && (
-                            <div className="text-center py-12 bg-white rounded-xl">
-                                <Dumbbell size={48} className="mx-auto text-blue-600 mb-4" />
-                                <p className="text-gray-600 mb-4">Full workout tracking coming soon!</p>
-                                <button 
-                                    onClick={() => setActiveTab('dashboard')}
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg"
-                                >
-                                    Back to Dashboard
-                                </button>
+                        {/* WORKOUT */}
+                        {tab === 'workout' && (
+                            selectedWorkout ? (
+                                <div className="space-y-4">
+                                    <button onClick={() => { setSelectedWorkout(null); setTimer(0); setTimerRunning(false); }} className="text-blue-600 font-semibold">← Back</button>
+                                    
+                                    {timerRunning && (
+                                        <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl p-4">
+                                            <div className="flex justify-between items-center">
+                                                <span>Rest Timer</span>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-3xl font-bold">{Math.floor(timer/60)}:{(timer%60).toString().padStart(2,'0')}</span>
+                                                    <button onClick={() => { setTimer(0); setTimerRunning(false); }} className="p-2 bg-white/20 rounded-lg"><X size={20} /></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="bg-white rounded-xl p-6 border-2 border-blue-200">
+                                        <h2 className="text-2xl font-bold mb-4">{selectedWorkout}</h2>
+                                        {cycleInfo && (
+                                            <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                                <p className="text-sm font-semibold text-purple-800">Cycle Adjustment:</p>
+                                                <p className="text-sm text-gray-700">{cycleInfo.trainingIntensity}</p>
+                                            </div>
+                                        )}
+
+                                        <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Edit3 size={16} className="text-yellow-600" />
+                                                <p className="text-sm font-semibold text-yellow-800">Workout Notes</p>
+                                            </div>
+                                            <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="How did you feel? Energy level?" className="w-full px-3 py-2 border-2 border-yellow-300 rounded-lg text-sm" rows="3" />
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {workouts[selectedWorkout].map((ex, i) => (
+                                                <div key={i} className="p-4 bg-gray-50 rounded-lg border">
+                                                    <div className="flex justify-between mb-2">
+                                                        <div className="flex-1">
+                                                            <p className="font-semibold">{ex.ex}</p>
+                                                            <p className="text-sm text-gray-600">{ex.sets} sets × {ex.reps} | Rest: {ex.rest}s</p>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => { setTimer(parseInt(ex.rest)); setTimerRunning(true); }} className="p-2 bg-orange-100 rounded-lg">
+                                                                <Clock size={18} className="text-orange-600" />
+                                                            </button>
+                                                            <button onClick={() => { setEditPR(ex.ex); setPRValue(prs[ex.ex]?.value || ''); }} className="p-2 bg-yellow-100 rounded-lg">
+                                                                <Award size={18} className="text-yellow-600" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {editPR === ex.ex ? (
+                                                        <div className="flex gap-2 mt-2">
+                                                            <input type="text" value={prValue} onChange={(e) => setPRValue(e.target.value)} placeholder="e.g., 60kg × 8" className="flex-1 px-3 py-2 border-2 border-yellow-300 rounded-lg text-sm" />
+                                                            <button onClick={() => savePR(ex.ex)} className="p-2 bg-green-500 text-white rounded-lg"><Save size={18} /></button>
+                                                            <button onClick={() => { setEditPR(null); setPRValue(''); }} className="p-2 bg-gray-300 rounded-lg"><X size={18} /></button>
+                                                        </div>
+                                                    ) : prs[ex.ex] && (
+                                                        <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+                                                            <p className="text-xs text-yellow-700 font-semibold">PR</p>
+                                                            <p className="text-sm font-bold text-yellow-900">{prs[ex.ex].value}</p>
+                                                            <p className="text-xs text-gray-500">{new Date(prs[ex.ex].date).toLocaleDateString()} • {prs[ex.ex].phase}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <button onClick={logWorkout} className="w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2">
+                                            <Check size={20} /> Complete Workout
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-2xl font-bold">Weekly Schedule</h2>
+                                        <button onClick={() => setEditSchedule(!editSchedule)} className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-semibold flex items-center gap-2">
+                                            <Settings size={16} /> {editSchedule ? 'Done' : 'Customize'}
+                                        </button>
+                                    </div>
+
+                                    {editSchedule && (
+                                        <div className="mb-4 p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
+                                            {(customSchedule || schedule).map((day, i) => (
+                                                <div key={i} className="mb-2 flex items-center gap-2">
+                                                    <span className="text-sm font-semibold w-24">{day.day}:</span>
+                                                    <select value={day.workout} onChange={(e) => {
+                                                        const newSched = [...(customSchedule || schedule)];
+                                                        newSched[i] = { ...newSched[i], workout: e.target.value };
+                                                        setCustomSchedule(newSched);
+                                                    }} className="flex-1 px-3 py-2 border-2 border-purple-300 rounded-lg text-sm">
+                                                        <option value="Rest">Rest</option>
+                                                        <option value="Upper A">Upper A</option>
+                                                        <option value="Lower A">Lower A</option>
+                                                        <option value="Upper B">Upper B</option>
+                                                        <option value="Lower B">Lower B</option>
+                                                    </select>
+                                                </div>
+                                            ))}
+                                            <button onClick={() => setCustomSchedule(null)} className="w-full mt-2 px-4 py-2 bg-gray-200 rounded-lg text-sm font-semibold">Reset Default</button>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-3">
+                                        {activeSchedule.map((day, i) => (
+                                            <div key={i} className={`p-4 rounded-xl border-2 ${day.day === today ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200'}`}>
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <p className="font-bold">{day.day}</p>
+                                                        <p className={`text-sm ${day.workout === 'Rest' ? 'text-gray-500' : 'text-blue-600 font-semibold'}`}>{day.workout}</p>
+                                                    </div>
+                                                    {day.workout !== 'Rest' && (
+                                                        <button onClick={() => setSelectedWorkout(day.workout)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">View</button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
+                        )}
+
+                        {/* SUPPLEMENTS */}
+                        {tab === 'supplements' && cycleInfo && (
+                            <div className="space-y-6">
+                                <div className="bg-purple-50 rounded-xl p-4 border-2 border-purple-200">
+                                    <h3 className="font-bold text-purple-900 mb-2">{cycleInfo.phase} Phase Protocol</h3>
+                                </div>
+                                <div className="space-y-3">
+                                    <h3 className="text-xl font-bold">Today's Stack</h3>
+                                    {cycleInfo.supplements.map((sup, i) => (
+                                        <div key={i} className="bg-white rounded-xl p-4 border-2 border-gray-200 flex items-center gap-3">
+                                            <Pill className="text-gray-400" size={24} />
+                                            <span className="font-semibold flex-1">{sup}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
-                        {activeTab === 'supplements' && (
-                            <div className="text-center py-12 bg-white rounded-xl">
-                                <Pill size={48} className="mx-auto text-orange-600 mb-4" />
-                                <p className="text-gray-600 mb-4">Supplement tracking coming soon!</p>
-                                <button 
-                                    onClick={() => setActiveTab('dashboard')}
-                                    className="px-6 py-2 bg-orange-600 text-white rounded-lg"
-                                >
-                                    Back to Dashboard
-                                </button>
-                            </div>
-                        )}
+                        {/* PROGRESS */}
+                        {tab === 'progress' && (
+                            <div className="space-y-6">
+                                <h2 className="text-2xl font-bold">Progress Tracker</h2>
+                                
+                                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-6 border-2 border-yellow-200">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Award className="text-yellow-600" size={28} />
+                                        <h3 className="text-lg font-bold text-yellow-900">Personal Records</h3>
+                                    </div>
+                                    {Object.keys(prs).length === 0 ? (
+                                        <p className="text-sm text-gray-600">No PRs yet!</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {Object.entries(prs).map(([ex, rec]) => (
+                                                <div key={ex} className="bg-white rounded-lg p-4 border border-yellow-200">
+                                                    <p className="font-semibold text-sm">{ex}</p>
+                                                    <p className="text-lg font-bold text-yellow-600">{rec.value}</p>
+                                                    <p className="text-xs text-gray-500">{new Date(rec.date).toLocaleDateString()} • {rec.phase}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
 
-                        {activeTab === 'progress' && (
-                            <div className="text-center py-12 bg-white rounded-xl">
-                                <TrendingUp size={48} className="mx-auto text-pink-600 mb-4" />
-                                <p className="text-gray-600 mb-4">Progress tracking coming soon!</p>
-                                <button 
-                                    onClick={() => setActiveTab('dashboard')}
-                                    className="px-6 py-2 bg-pink-600 text-white rounded-lg"
-                                >
-                                    Back to Dashboard
-                                </button>
+                                <div className="bg-white rounded-xl p-6 border-2 border-gray-200">
+                                    <h3 className="text-lg font-bold mb-3">Workout History</h3>
+                                    {Object.keys(workoutLog).length === 0 ? (
+                                        <p className="text-sm text-gray-500">No workouts logged yet</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {Object.entries(workoutLog).reverse().slice(0,10).map(([date, log]) => (
+                                                <div key={date} className="p-4 bg-gray-50 rounded-lg border">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <div>
+                                                            <p className="font-semibold text-sm">{log.workout}</p>
+                                                            <p className="text-xs text-gray-500">{new Date(date).toLocaleDateString()}</p>
+                                                            <p className="text-xs text-purple-600">{log.phase} Phase</p>
+                                                        </div>
+                                                        <Check className="text-green-500" size={20} />
+                                                    </div>
+                                                    {log.note && (
+                                                        <div className="mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+                                                            <p className="text-xs font-semibold text-yellow-700">Notes:</p>
+                                                            <p className="text-xs text-gray-700">{log.note}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
 
+                    {/* BOTTOM NAV */}
                     <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-lg">
-                        <div className="max-w-2xl mx-auto flex justify-around items-center py-3">
-                            <button
-                                onClick={() => setActiveTab('dashboard')}
-                                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${
-                                    activeTab === 'dashboard' ? 'bg-purple-100 text-purple-600' : 'text-gray-600'
-                                }`}
-                            >
-                                <TrendingUp size={24} />
-                                <span className="text-xs font-semibold">Dashboard</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('workout')}
-                                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${
-                                    activeTab === 'workout' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'
-                                }`}
-                            >
-                                <Dumbbell size={24} />
-                                <span className="text-xs font-semibold">Workout</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('supplements')}
-                                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${
-                                    activeTab === 'supplements' ? 'bg-orange-100 text-orange-600' : 'text-gray-600'
-                                }`}
-                            >
-                                <Pill size={24} />
-                                <span className="text-xs font-semibold">Supplements</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('progress')}
-                                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${
-                                    activeTab === 'progress' ? 'bg-pink-100 text-pink-600' : 'text-gray-600'
-                                }`}
-                            >
-                                <Calendar size={24} />
-                                <span className="text-xs font-semibold">Progress</span>
-                            </button>
+                        <div className="max-w-2xl mx-auto flex justify-around py-3">
+                            {[
+                                { id: 'dashboard', Icon: TrendingUp, label: 'Dashboard', color: 'purple' },
+                                { id: 'workout', Icon: Dumbbell, label: 'Workout', color: 'blue' },
+                                { id: 'supplements', Icon: Pill, label: 'Supplements', color: 'orange' },
+                                { id: 'progress', Icon: Calendar, label: 'Progress', color: 'pink' }
+                            ].map(({ id, Icon, label, color }) => (
+                                <button key={id} onClick={() => setTab(id)} className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition ${tab === id ? `bg-${color}-100 text-${color}-600` : 'text-gray-600'}`}>
+                                    <Icon size={24} />
+                                    <span className="text-xs font-semibold">{label}</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
