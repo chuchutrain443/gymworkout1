@@ -26,7 +26,20 @@
             timerRunning: false,
             note: '',
             editingPR: null,
-            prValue: ''
+            prValue: '',
+            proteinToday: JSON.parse(localStorage.getItem('proteinToday') || '{"date":"","amount":0}'),
+            showProteinInput: false,
+            proteinAmount: '',
+            customSchedule: JSON.parse(localStorage.getItem('customSchedule') || 'null'),
+            editingSchedule: false,
+            cardioLog: JSON.parse(localStorage.getItem('cardioLog') || '{}'),
+            cardioTimer: 0,
+            cardioRunning: false,
+            customExercises: [],
+            showAddExercise: false,
+            newExerciseName: '',
+            newExerciseSets: '3',
+            newExerciseReps: '10-12'
         };
 
         const workouts = {
@@ -109,6 +122,112 @@
             localStorage.setItem('weight', state.weight);
             localStorage.setItem('workoutLog', JSON.stringify(state.workoutLog));
             localStorage.setItem('prs', JSON.stringify(state.prs));
+            localStorage.setItem('proteinToday', JSON.stringify(state.proteinToday));
+            localStorage.setItem('customSchedule', JSON.stringify(state.customSchedule));
+            localStorage.setItem('cardioLog', JSON.stringify(state.cardioLog));
+        }
+
+        function addProtein() {
+            const today = new Date().toISOString().split('T')[0];
+            if (state.proteinToday.date !== today) {
+                state.proteinToday = { date: today, amount: 0 };
+            }
+            const amount = parseFloat(state.proteinAmount) || 0;
+            state.proteinToday.amount += amount;
+            state.proteinAmount = '';
+            state.showProteinInput = false;
+            save();
+            render();
+        }
+
+        function resetProtein() {
+            const today = new Date().toISOString().split('T')[0];
+            state.proteinToday = { date: today, amount: 0 };
+            save();
+            render();
+        }
+
+        function syncAppleHealth() {
+            // Check if running as PWA on iOS
+            if (window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches) {
+                alert('Apple Health sync coming soon! For now:\n\n1. Export your data using the Export button\n2. Open Apple Health app\n3. Manually log:\n   - Weight: ' + state.weight + 'kg\n   - Workouts logged: ' + Object.keys(state.workoutLog).length + '\n\nFull auto-sync requires native app.');
+            } else {
+                alert('Apple Health Integration:\n\nTo enable health sync:\n1. Add this app to your Home Screen first\n2. Open from Home Screen (not Safari)\n3. Grant health permissions\n\nNote: Full Apple Health sync requires native app development. For now, use Export Data to manually import to health apps.');
+            }
+        }
+
+        function getCardioRecommendation(cycleInfo) {
+            if (!cycleInfo) return { recommended: false, reason: 'Set your cycle date first' };
+            
+            const cycleDay = cycleInfo.cycleDay;
+            
+            if (cycleDay >= 1 && cycleDay <= 2) {
+                return { recommended: false, reason: 'Menstrual Days 1-2: Rest if feeling low energy', color: 'red' };
+            } else if (cycleDay >= 3 && cycleDay <= 5) {
+                return { recommended: true, reason: 'Menstrual Days 3-5: Light cardio OK if energy rebounds', sessions: '0-1x this week', color: 'yellow' };
+            } else if (cycleDay >= 6 && cycleDay <= 14) {
+                return { recommended: true, reason: 'Follicular: PEAK cardio phase! Go for it!', sessions: '2-3x this week', color: 'green' };
+            } else if (cycleDay >= 15 && cycleDay <= 17) {
+                return { recommended: true, reason: 'Ovulation: Energy is high, but save some for lifting PRs', sessions: '1-2x this week', color: 'green' };
+            } else if (cycleDay >= 18 && cycleDay <= 24) {
+                return { recommended: true, reason: 'Early Luteal: Still good to go', sessions: '1-2x this week', color: 'green' };
+            } else {
+                return { recommended: false, reason: 'Late Luteal (PMS): Skip cardio, just walk 8-10k steps', color: 'red' };
+            }
+        }
+
+        function getCardioThisWeek() {
+            const today = new Date();
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+            
+            let count = 0;
+            Object.entries(state.cardioLog).forEach(([date, log]) => {
+                const logDate = new Date(date);
+                if (logDate >= weekStart && logDate <= today) {
+                    count++;
+                }
+            });
+            return count;
+        }
+
+        function startCardioTimer() {
+            state.cardioTimer = 1800; // 30 minutes
+            state.cardioRunning = true;
+            render();
+            
+            const interval = setInterval(() => {
+                state.cardioTimer--;
+                if (state.cardioTimer <= 0) {
+                    clearInterval(interval);
+                    state.cardioRunning = false;
+                    alert('🎉 30 minutes done! Great job!');
+                    render();
+                }
+                if (state.cardioTimer % 60 === 0) { // Update every minute
+                    render();
+                }
+            }, 1000);
+        }
+
+        function stopCardioTimer() {
+            state.cardioTimer = 0;
+            state.cardioRunning = false;
+            render();
+        }
+
+        function logCardio() {
+            const date = new Date().toISOString().split('T')[0];
+            const cycleInfo = getCycleInfo(state.lastPeriod);
+            state.cardioLog[date] = {
+                type: '12-3-30',
+                duration: 30,
+                phase: cycleInfo?.phase || 'Unknown'
+            };
+            state.cardioTimer = 0;
+            state.cardioRunning = false;
+            save();
+            render();
         }
 
         function startTimer(seconds) {
@@ -161,7 +280,8 @@
             const app = document.getElementById('app');
             const cycleInfo = getCycleInfo(state.lastPeriod);
             const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-            const todayWorkout = schedule.find(d => d.day === today);
+            const activeSchedule = state.customSchedule || schedule;
+            const todayWorkout = activeSchedule.find(d => d.day === today);
 
             let html = `
                 <div class="text-center mb-6 pt-4">
@@ -233,6 +353,70 @@
                             <p class="text-2xl font-bold text-blue-600">130-145g</p>
                         </div>
                     </div>
+
+                    <div class="bg-white rounded-xl p-6 border-2 border-green-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <p class="text-sm text-gray-600">Protein Today</p>
+                                <p class="text-3xl font-bold text-green-600">${getTodayProtein()}g</p>
+                                <p class="text-xs text-gray-500">Target: 130-145g</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm text-gray-600 mb-2">
+                                    ${Math.round((getTodayProtein() / 135) * 100)}%
+                                </div>
+                                <button onclick="toggleProteinInput()" 
+                                    class="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold text-sm">
+                                    + Add
+                                </button>
+                            </div>
+                        </div>
+                        
+                        ${state.showProteinInput ? `
+                            <div class="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                                <p class="text-sm font-semibold text-green-800 mb-2">Quick Add Protein:</p>
+                                <div class="grid grid-cols-3 gap-2 mb-3">
+                                    <button onclick="quickAddProtein(25)" class="px-3 py-2 bg-white border-2 border-green-300 rounded-lg text-sm font-semibold hover:bg-green-100">
+                                        +25g<br><span class="text-xs text-gray-500">Scoop</span>
+                                    </button>
+                                    <button onclick="quickAddProtein(30)" class="px-3 py-2 bg-white border-2 border-green-300 rounded-lg text-sm font-semibold hover:bg-green-100">
+                                        +30g<br><span class="text-xs text-gray-500">Chicken</span>
+                                    </button>
+                                    <button onclick="quickAddProtein(20)" class="px-3 py-2 bg-white border-2 border-green-300 rounded-lg text-sm font-semibold hover:bg-green-100">
+                                        +20g<br><span class="text-xs text-gray-500">Eggs</span>
+                                    </button>
+                                </div>
+                                <div class="flex gap-2">
+                                    <input type="number" id="proteinInput" value="${state.proteinAmount}" 
+                                        placeholder="Custom amount" 
+                                        class="flex-1 px-3 py-2 border-2 border-green-300 rounded-lg text-sm">
+                                    <button onclick="addProtein()" 
+                                        class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold">
+                                        Add
+                                    </button>
+                                    <button onclick="toggleProteinInput()" 
+                                        class="px-3 py-2 bg-gray-200 rounded-lg text-sm">
+                                        ✕
+                                    </button>
+                                </div>
+                                <button onclick="resetProtein()" 
+                                    class="w-full mt-2 px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-semibold">
+                                    Reset Today
+                                </button>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-3">
+                            <div class="bg-green-600 h-2 rounded-full transition-all" 
+                                style="width: ${Math.min((getTodayProtein() / 145) * 100, 100)}%"></div>
+                        </div>
+                    </div>
+
+                    <button onclick="syncAppleHealth()" 
+                        class="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg">
+                        <span class="text-xl">❤️</span>
+                        Sync with Apple Health
+                    </button>
                 `;
 
                 if (cycleInfo) {
@@ -286,8 +470,37 @@
                             </div>
 
                             <div class="space-y-3">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h3 class="font-bold text-gray-900">Exercises</h3>
+                                    <button onclick="toggleAddExercise()" 
+                                        class="px-3 py-1 ${state.showAddExercise ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-700'} rounded-lg text-sm font-semibold">
+                                        ${state.showAddExercise ? '✕ Cancel' : '+ Add Exercise'}
+                                    </button>
+                                </div>
+
+                                ${state.showAddExercise ? `
+                                    <div class="p-4 bg-green-50 rounded-lg border-2 border-green-200 mb-3">
+                                        <p class="text-sm font-semibold text-green-800 mb-3">Add Custom Exercise:</p>
+                                        <input type="text" id="newExerciseName" value="${state.newExerciseName}" 
+                                            placeholder="Exercise name (e.g., Cable Flyes)" 
+                                            class="w-full px-3 py-2 border-2 border-green-300 rounded-lg text-sm mb-2">
+                                        <div class="grid grid-cols-2 gap-2 mb-2">
+                                            <input type="text" id="newExerciseSets" value="${state.newExerciseSets}" 
+                                                placeholder="Sets" 
+                                                class="px-3 py-2 border-2 border-green-300 rounded-lg text-sm">
+                                            <input type="text" id="newExerciseReps" value="${state.newExerciseReps}" 
+                                                placeholder="Reps" 
+                                                class="px-3 py-2 border-2 border-green-300 rounded-lg text-sm">
+                                        </div>
+                                        <button onclick="addCustomExercise()" 
+                                            class="w-full bg-green-600 text-white py-2 rounded-lg font-semibold text-sm">
+                                            Add to Today's Workout
+                                        </button>
+                                    </div>
+                                ` : ''}
                     `;
 
+                    // Show main workout exercises
                     workouts[state.selectedWorkout].forEach((ex, i) => {
                         html += `
                             <div class="p-4 bg-gray-50 rounded-lg border">
@@ -337,6 +550,27 @@
 
                     html += `
                             </div>
+                            
+                            ${state.customExercises.length > 0 ? `
+                                <div class="mt-4 pt-4 border-t-2 border-dashed border-gray-300">
+                                    <p class="text-sm font-semibold text-gray-700 mb-3">💪 Extra Exercises Added:</p>
+                                    ${state.customExercises.map((ex, idx) => `
+                                        <div class="p-3 bg-purple-50 rounded-lg border border-purple-200 mb-2">
+                                            <div class="flex justify-between items-center">
+                                                <div>
+                                                    <p class="font-semibold text-sm">${ex.name}</p>
+                                                    <p class="text-xs text-gray-600">${ex.sets} sets × ${ex.reps} reps</p>
+                                                </div>
+                                                <button onclick="removeCustomExercise(${idx})" 
+                                                    class="px-2 py-1 bg-red-100 text-red-600 rounded text-xs">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                            
                             <button onclick="completeWorkout()" 
                                 class="w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-semibold">
                                 ✓ Complete Workout
@@ -345,9 +579,54 @@
                     </div>
                     `;
                 } else {
-                    html += '<div><h2 class="text-2xl font-bold mb-4">Weekly Schedule</h2><div class="space-y-3">';
+                    html += '<div><h2 class="text-2xl font-bold mb-4">Weekly Schedule</h2>';
                     
-                    schedule.forEach(day => {
+                    html += `
+                        <div class="mb-4 flex justify-end">
+                            <button onclick="toggleScheduleEdit()" 
+                                class="px-4 py-2 ${state.editingSchedule ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'} rounded-lg text-sm font-semibold flex items-center gap-2">
+                                <span class="text-lg">⚙️</span>
+                                ${state.editingSchedule ? 'Done' : 'Customize Schedule'}
+                            </button>
+                        </div>
+                    `;
+
+                    if (state.editingSchedule) {
+                        html += `
+                            <div class="mb-4 p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
+                                <p class="text-sm text-purple-800 mb-3 font-semibold">
+                                    Tap to change workout days:
+                                </p>
+                        `;
+                        
+                        const currentSchedule = state.customSchedule || schedule;
+                        currentSchedule.forEach((day, i) => {
+                            html += `
+                                <div class="mb-2 flex items-center gap-2">
+                                    <span class="text-sm font-semibold w-24">${day.day}:</span>
+                                    <select id="schedule-${i}" class="flex-1 px-3 py-2 border-2 border-purple-300 rounded-lg text-sm bg-white">
+                                        <option value="Rest" ${day.workout === 'Rest' ? 'selected' : ''}>Rest</option>
+                                        <option value="Upper A" ${day.workout === 'Upper A' ? 'selected' : ''}>Upper A (Push)</option>
+                                        <option value="Lower A" ${day.workout === 'Lower A' ? 'selected' : ''}>Lower A (Quad/Glute)</option>
+                                        <option value="Upper B" ${day.workout === 'Upper B' ? 'selected' : ''}>Upper B (Pull)</option>
+                                        <option value="Lower B" ${day.workout === 'Lower B' ? 'selected' : ''}>Lower B (Posterior)</option>
+                                    </select>
+                                </div>
+                            `;
+                        });
+
+                        html += `
+                                <button onclick="resetSchedule()" 
+                                    class="w-full mt-3 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300">
+                                    Reset to Default Schedule
+                                </button>
+                            </div>
+                        `;
+                    }
+
+                    html += '<div class="space-y-3">';
+                    
+                    activeSchedule.forEach((day, i) => {
                         const isToday = day.day === today;
                         html += `
                             <div class="p-4 rounded-xl border-2 ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200'}">
@@ -437,20 +716,184 @@
                 html += '</div></div>';
             }
 
+            // CARDIO TAB
+            else if (state.tab === 'cardio') {
+                const cycleInfo = getCycleInfo(state.lastPeriod);
+                const recommendation = getCardioRecommendation(cycleInfo);
+                const cardioThisWeek = getCardioThisWeek();
+
+                html += '<div class="space-y-6"><h2 class="text-2xl font-bold">Cardio Tracker</h2>';
+
+                // Cycle recommendation
+                if (cycleInfo) {
+                    const bgColor = recommendation.color === 'green' ? 'bg-green-50 border-green-200' : 
+                                   recommendation.color === 'yellow' ? 'bg-yellow-50 border-yellow-200' : 
+                                   'bg-red-50 border-red-200';
+                    const textColor = recommendation.color === 'green' ? 'text-green-900' : 
+                                     recommendation.color === 'yellow' ? 'text-yellow-900' : 
+                                     'text-red-900';
+                    
+                    html += `
+                        <div class="${bgColor} rounded-xl p-6 border-2">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <p class="text-sm text-gray-600">Cycle Day ${cycleInfo.cycleDay} - ${cycleInfo.phase}</p>
+                                    <h3 class="text-xl font-bold ${textColor}">
+                                        ${recommendation.recommended ? '✅ Cardio Recommended' : '⚠️ Skip Cardio Today'}
+                                    </h3>
+                                </div>
+                                <span class="text-4xl">${recommendation.recommended ? '💪' : '🛌'}</span>
+                            </div>
+                            <p class="text-sm text-gray-700 mb-2">${recommendation.reason}</p>
+                            ${recommendation.sessions ? `<p class="text-sm font-semibold ${textColor}">Target: ${recommendation.sessions}</p>` : ''}
+                        </div>
+                    `;
+                }
+
+                // This week stats
+                html += `
+                    <div class="bg-white rounded-xl p-6 border-2 border-gray-200">
+                        <h3 class="text-lg font-bold mb-3">This Week</h3>
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <p class="text-3xl font-bold text-blue-600">${cardioThisWeek}</p>
+                                <p class="text-sm text-gray-600">sessions completed</p>
+                            </div>
+                            <div class="text-right">
+                                ${cardioThisWeek >= 3 ? 
+                                    '<p class="text-sm text-orange-600 font-semibold">⚠️ At limit (3/week max)</p>' :
+                                    cardioThisWeek === 2 ?
+                                    '<p class="text-sm text-green-600 font-semibold">✅ Good! (1 more OK)</p>' :
+                                    '<p class="text-sm text-gray-600">Keep going!</p>'
+                                }
+                            </div>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full transition-all" 
+                                style="width: ${Math.min((cardioThisWeek / 3) * 100, 100)}%"></div>
+                        </div>
+                    </div>
+                `;
+
+                // 12-3-30 Card
+                html += `
+                    <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border-2 border-blue-200">
+                        <h3 class="text-xl font-bold text-blue-900 mb-3">12-3-30 Incline Walk</h3>
+                        <div class="space-y-2 text-sm text-gray-700 mb-4">
+                            <p>• <strong>12%</strong> incline</p>
+                            <p>• <strong>3.0 mph</strong> speed</p>
+                            <p>• <strong>30 minutes</strong> duration</p>
+                        </div>
+
+                        ${state.cardioRunning ? `
+                            <div class="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl p-4 mb-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-semibold">Time Remaining</span>
+                                    <div class="flex items-center gap-4">
+                                        <span class="text-3xl font-bold">${Math.floor(state.cardioTimer/60)}:${(state.cardioTimer%60).toString().padStart(2,'0')}</span>
+                                        <button onclick="stopCardioTimer()" class="px-3 py-1 bg-white/20 rounded-lg text-sm">Stop</button>
+                                    </div>
+                                </div>
+                                <div class="w-full bg-white/20 rounded-full h-2 mt-3">
+                                    <div class="bg-white h-2 rounded-full transition-all" 
+                                        style="width: ${((1800 - state.cardioTimer) / 1800) * 100}%"></div>
+                                </div>
+                            </div>
+                            <button onclick="logCardio()" 
+                                class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold">
+                                ✓ Complete Session
+                            </button>
+                        ` : `
+                            <button onclick="startCardioTimer()" 
+                                class="w-full ${recommendation.recommended && cardioThisWeek < 3 ? 'bg-blue-600' : 'bg-gray-400'} text-white py-3 rounded-lg font-semibold mb-2"
+                                ${!recommendation.recommended || cardioThisWeek >= 3 ? 'disabled' : ''}>
+                                ${!recommendation.recommended ? '⚠️ Not Recommended Today' : 
+                                  cardioThisWeek >= 3 ? '⚠️ 3 Sessions Done This Week' : 
+                                  '▶️ Start 30 Min Timer'}
+                            </button>
+                            ${(!recommendation.recommended || cardioThisWeek >= 3) ? 
+                                '<p class="text-xs text-center text-gray-500">Take a rest day or do a light 10k step walk instead</p>' : 
+                                '<button onclick="logCardio()" class="w-full bg-gray-200 text-gray-700 py-2 rounded-lg text-sm">Log Without Timer</button>'
+                            }
+                        `}
+                    </div>
+                `;
+
+                // Best days to do cardio
+                const activeSchedule = state.customSchedule || schedule;
+                const restDays = activeSchedule.filter(d => d.workout === 'Rest').map(d => d.day);
+                const lowerDays = activeSchedule.filter(d => d.workout.includes('Lower')).map(d => d.day);
+                
+                html += `
+                    <div class="bg-white rounded-xl p-6 border-2 border-gray-200">
+                        <h3 class="text-lg font-bold mb-3">📅 Best Days for Cardio</h3>
+                        <div class="space-y-2 text-sm">
+                            ${restDays.length > 0 ? `
+                                <p><strong>Rest Days:</strong> ${restDays.join(', ')}</p>
+                                <p class="text-xs text-gray-600">Perfect for 12-3-30 - no interference with lifting</p>
+                            ` : '<p class="text-orange-600"><strong>No rest days!</strong> Consider adding 1-2 for cardio & recovery</p>'}
+                            ${lowerDays.length > 0 ? `
+                                <p><strong>After Lower Body:</strong> ${lowerDays.join(', ')}</p>
+                                <p class="text-xs text-gray-600">Active recovery option - do cardio AFTER lifting, not before</p>
+                            ` : ''}
+                        </div>
+                        <div class="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                            <p class="text-xs font-semibold text-yellow-800 mb-1">⚠️ Important:</p>
+                            <p class="text-xs text-gray-700">Always do cardio AFTER lifting, never before! Cardio before lifting kills your strength.</p>
+                        </div>
+                        <button onclick="state.tab='workout'; render();" class="w-full mt-3 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-semibold">
+                            Customize Workout Schedule →
+                        </button>
+                    </div>
+                `;
+
+                // Recent cardio sessions
+                html += `
+                    <div class="bg-white rounded-xl p-6 border-2 border-gray-200">
+                        <h3 class="text-lg font-bold mb-3">Recent Sessions</h3>
+                `;
+
+                const cardioEntries = Object.entries(state.cardioLog).reverse().slice(0, 10);
+                if (cardioEntries.length === 0) {
+                    html += '<p class="text-sm text-gray-500">No cardio logged yet</p>';
+                } else {
+                    html += '<div class="space-y-2">';
+                    cardioEntries.forEach(([date, log]) => {
+                        html += `
+                            <div class="p-3 bg-gray-50 rounded-lg border flex justify-between items-center">
+                                <div>
+                                    <p class="font-semibold text-sm">${log.type} - ${log.duration} min</p>
+                                    <p class="text-xs text-gray-500">${new Date(date).toLocaleDateString()}</p>
+                                    <p class="text-xs text-purple-600">${log.phase} Phase</p>
+                                </div>
+                                <span class="text-green-500 text-xl">✓</span>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+
+                html += '</div></div>';
+            }
+
             // BOTTOM NAV
             html += `
                 <div class="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-lg">
                     <div class="max-w-2xl mx-auto flex justify-around py-3">
-                        <button onclick="setTab('dashboard')" class="flex flex-col items-center gap-1 px-4 py-2 rounded-lg ${state.tab === 'dashboard' ? 'tab-active' : ''}">
-                            <span class="text-2xl">📈</span>
-                            <span class="text-xs font-semibold">Dashboard</span>
+                        <button onclick="setTab('dashboard')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'dashboard' ? 'tab-active' : ''}">
+                            <span class="text-xl">📈</span>
+                            <span class="text-xs font-semibold">Home</span>
                         </button>
-                        <button onclick="setTab('workout')" class="flex flex-col items-center gap-1 px-4 py-2 rounded-lg ${state.tab === 'workout' ? 'tab-active' : ''}">
-                            <span class="text-2xl">💪</span>
+                        <button onclick="setTab('workout')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'workout' ? 'tab-active' : ''}">
+                            <span class="text-xl">💪</span>
                             <span class="text-xs font-semibold">Workout</span>
                         </button>
-                        <button onclick="setTab('progress')" class="flex flex-col items-center gap-1 px-4 py-2 rounded-lg ${state.tab === 'progress' ? 'tab-active' : ''}">
-                            <span class="text-2xl">📅</span>
+                        <button onclick="setTab('cardio')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'cardio' ? 'tab-active' : ''}">
+                            <span class="text-xl">🏃‍♀️</span>
+                            <span class="text-xs font-semibold">Cardio</span>
+                        </button>
+                        <button onclick="setTab('progress')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${state.tab === 'progress' ? 'tab-active' : ''}">
+                            <span class="text-xl">📅</span>
                             <span class="text-xs font-semibold">Progress</span>
                         </button>
                     </div>
@@ -491,9 +934,80 @@
                     state.prValue = e.target.value;
                 });
             }
+
+            const proteinInput = document.getElementById('proteinInput');
+            if (proteinInput) {
+                proteinInput.addEventListener('input', (e) => {
+                    state.proteinAmount = e.target.value;
+                });
+                proteinInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        addProtein();
+                    }
+                });
+            }
+
+            // Attach schedule dropdown listeners
+            if (state.editingSchedule) {
+                const currentSchedule = state.customSchedule || schedule;
+                currentSchedule.forEach((day, i) => {
+                    const dropdown = document.getElementById(`schedule-${i}`);
+                    if (dropdown) {
+                        dropdown.addEventListener('change', (e) => {
+                            updateSchedule(i, e.target.value);
+                        });
+                    }
+                });
+            }
+
+            // Attach custom exercise input listeners
+            const newExNameInput = document.getElementById('newExerciseName');
+            if (newExNameInput) {
+                newExNameInput.addEventListener('input', (e) => {
+                    state.newExerciseName = e.target.value;
+                });
+            }
+
+            const newExSetsInput = document.getElementById('newExerciseSets');
+            if (newExSetsInput) {
+                newExSetsInput.addEventListener('input', (e) => {
+                    state.newExerciseSets = e.target.value;
+                });
+            }
+
+            const newExRepsInput = document.getElementById('newExerciseReps');
+            if (newExRepsInput) {
+                newExRepsInput.addEventListener('input', (e) => {
+                    state.newExerciseReps = e.target.value;
+                });
+            }
         }
 
         // Global functions
+        function getTodayProtein() {
+            const today = new Date().toISOString().split('T')[0];
+            if (state.proteinToday.date !== today) {
+                state.proteinToday = { date: today, amount: 0 };
+                save();
+            }
+            return state.proteinToday.amount;
+        }
+
+        function toggleProteinInput() {
+            state.showProteinInput = !state.showProteinInput;
+            render();
+        }
+
+        function quickAddProtein(amount) {
+            const today = new Date().toISOString().split('T')[0];
+            if (state.proteinToday.date !== today) {
+                state.proteinToday = { date: today, amount: 0 };
+            }
+            state.proteinToday.amount += amount;
+            save();
+            render();
+        }
+
         function setTab(tab) {
             state.tab = tab;
             render();
@@ -527,6 +1041,52 @@
         function cancelPR() {
             state.editingPR = null;
             state.prValue = '';
+            render();
+        }
+
+        function toggleScheduleEdit() {
+            state.editingSchedule = !state.editingSchedule;
+            render();
+        }
+
+        function updateSchedule(dayIndex, newWorkout) {
+            const currentSchedule = state.customSchedule || JSON.parse(JSON.stringify(schedule));
+            currentSchedule[dayIndex].workout = newWorkout;
+            state.customSchedule = currentSchedule;
+            save();
+            render();
+        }
+
+        function resetSchedule() {
+            state.customSchedule = null;
+            state.editingSchedule = false;
+            save();
+            render();
+        }
+
+        function toggleAddExercise() {
+            state.showAddExercise = !state.showAddExercise;
+            render();
+        }
+
+        function addCustomExercise() {
+            if (state.newExerciseName.trim()) {
+                state.customExercises.push({
+                    name: state.newExerciseName.trim(),
+                    sets: state.newExerciseSets,
+                    reps: state.newExerciseReps,
+                    rest: 60
+                });
+                state.newExerciseName = '';
+                state.newExerciseSets = '3';
+                state.newExerciseReps = '10-12';
+                state.showAddExercise = false;
+                render();
+            }
+        }
+
+        function removeCustomExercise(index) {
+            state.customExercises.splice(index, 1);
             render();
         }
 
